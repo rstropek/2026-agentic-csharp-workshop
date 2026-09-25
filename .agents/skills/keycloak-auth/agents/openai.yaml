@@ -1,0 +1,4 @@
+interface:
+  display_name: "Keycloak Auth"
+  short_description: "Workshop Keycloak setup and MCP auth protocols"
+  default_prompt: "Use $keycloak-auth to provision workshop Keycloak and explain the latest MCP authorization protocols and gotchas."

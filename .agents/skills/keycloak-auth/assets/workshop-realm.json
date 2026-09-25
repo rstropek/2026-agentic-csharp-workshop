@@ -1,0 +1,109 @@
+{
+  "realm": "workshop",
+  "enabled": true,
+  "displayName": "MCP workshop",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "users": [
+    {
+      "username": "demo",
+      "enabled": true,
+      "email": "demo@example.com",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "User",
+      "credentials": [{ "type": "password", "value": "demo", "temporary": false }]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "http://localhost:7071/mcp",
+      "name": "Workshop MCP resource server",
+      "protocol": "openid-connect",
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "attributes": { "resource_url": "http://localhost:7071/mcp" }
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "mcp:tools",
+      "description": "Call the workshop MCP server",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Call the workshop MCP tools"
+      },
+      "protocolMappers": [
+        {
+          "name": "workshop-mcp-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "http://localhost:7071/mcp",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "defaultOptionalClientScopes": ["mcp:tools"],
+  "clientProfiles": {
+    "profiles": [
+      {
+        "name": "mcpjam-cimd",
+        "description": "Fetch MCPJam metadata and permit its declared callback hosts",
+        "executors": [
+          {
+            "executor": "client-id-metadata-document",
+            "configuration": {
+              "cimd-allow-http-scheme": false,
+              "cimd-allow-permitted-domains": [
+                "www.mcpjam.com", "app.mcpjam.com", "staging.mcpjam.com",
+                "score.mcpjam.com", "www.score.mcpjam.com", "localhost", "127.0.0.1"
+              ],
+              "cimd-restrict-same-domain": false,
+              "cimd-required-properties": ["client_name", "redirect_uris"],
+              "only-allow-confidential-client": false
+            }
+          }
+        ]
+      },
+      {
+        "name": "require-pkce",
+        "executors": [
+          { "executor": "pkce-enforcer", "configuration": { "auto-configure": true } }
+        ]
+      }
+    ]
+  },
+  "clientPolicies": {
+    "policies": [
+      {
+        "name": "mcpjam-cimd",
+        "enabled": true,
+        "conditions": [
+          {
+            "condition": "client-id-uri",
+            "configuration": {
+              "client-id-uri-scheme": ["https"],
+              "client-id-uri-allow-permitted-domains": ["www.mcpjam.com"]
+            }
+          }
+        ],
+        "profiles": ["mcpjam-cimd"]
+      },
+      {
+        "name": "require-pkce",
+        "enabled": true,
+        "conditions": [{ "condition": "any-client", "configuration": {} }],
+        "profiles": ["require-pkce"]
+      }
+    ]
+  }
+}
