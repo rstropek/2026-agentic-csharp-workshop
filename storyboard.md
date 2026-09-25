@@ -382,3 +382,120 @@ Links:
 * [Migrations](https://learn.microsoft.com/ef/core/managing-schemas/migrations/), [`dotnet ef` CLI](https://learn.microsoft.com/ef/core/cli/dotnet), [Design-time DbContext creation](https://learn.microsoft.com/ef/core/cli/dbcontext-creation)
 * [EF Core 11 breaking changes](https://learn.microsoft.com/ef/core/what-is-new/ef-core-11.0/breaking-changes), [.NET local tools](https://learn.microsoft.com/dotnet/core/tools/local-tools-how-to-use)
 * [Mermaid ER diagrams](https://mermaid.js.org/syntax/entityRelationshipDiagram.html), [Bogus](https://github.com/bchavez/Bogus), [SQLite result codes](https://sqlite.org/rescode.html)
+
+---
+
+## Step 6 – Web API (architecture first)
+
+Goal: the first real use cases as a Web API. This time **we write the architecture first**: a tech docs article describes *how* we build Web APIs in this project, the prompt only describes the *task*.
+
+Preparation: copy the architecture article from the workshop materials (next to this storyboard) into the repo:
+
+```bash
+cp <workshop-materials>/web-api.md tech-docs/
+```
+
+Walk through the article (`tech-docs/web-api.md`) – principles and patterns only, no concrete endpoints:
+
+* Use cases, not tables: no generic CRUD, endpoints grouped by use-case area, response shapes tailored to the use case, server decides sort order
+* Layers: thin endpoints → use-case service interfaces in GraderLogic (injected, mockable) → `DbContext`
+* Data access: entities never leave GraderLogic, reads project into records, one request = one transaction; pattern for saving a parent with all its children (`PUT` with the complete document)
+* Errors: services translate DB errors into a few meaningful exceptions with stable error codes → central handler → Problem Details with a `code` member
+* Validation at the API boundary, HTTP + OpenAPI conventions (tags = use-case areas, operation names = use cases)
+* "Deliberately not done": no PATCH/paging/OData, no generic repository/unit of work, no optimistic concurrency, no auth yet
+* Why no repository/unit of work? The `DbContext` already is both; a generic `IRepository<T>` leads back to table thinking. The use-case service interface is the seam for mocking. Agents like to generate repositories (training data) → decide it explicitly.
+
+Prompt:
+
+```text
+Implement the first Web API use cases. Follow the architecture in tech-docs/web-api.md.
+
+Use cases:
+- Class management:
+  - Pick a school year (newest first).
+  - List the classes of a school year (by name, incl. number of students).
+  - Open a class incl. its students (by last name, first name).
+  - Create a class incl. its students.
+  - Save a class incl. its students. The full student list is always sent (users maintain all rows in one UI, later maybe via Excel upload). Removing a student who has exam results fails.
+  - Delete a class incl. its students. Fails if the class has exams.
+- Exams:
+  - Pick a course (by name).
+  - List the exams of a class (by date, incl. course).
+  - Open an exam incl. the results of all students of the class (by last name, first name; no result = null).
+  - Create an exam incl. its results.
+  - Save an exam incl. its results. Date, course and the full result list are always sent (users enter all results of an exam in one UI). The class of an exam cannot be changed. Results only for students of the exam's class.
+  - Delete an exam incl. its results.
+- Demo data: one endpoint that empties the database and fills it with demo data using the test data generator (will be a button in the UI later).
+
+Requirements:
+- No UI yet (next step).
+- SchoolYear and Course have no write API (a CLI and agent support will follow later).
+- GraderApi uses the SQLite database from the previous step.
+- Exemplary tests, each with a regular and an error case:
+  - Unit tests: one data access helper (e.g. translating a DB error into an exception); one endpoint with a mocked use-case service.
+  - Integration tests: saving a class with added, changed and removed students against SQLite; one endpoint end to end incl. the error `code` in the Problem Details.
+- You may extend, update and refine tech-docs/web-api.md (follow the tech docs rules in AGENTS.md). If you need to deviate from its principles, ask first.
+- Add web-api.md to the tech docs index in AGENTS.md.
+- Done when the QA script is green. Then commit directly to main.
+```
+
+Rehearsal: ~11 min, no questions, no struggles – the longest step so far (12 use cases + demo data). The agent verified every endpoint by hand against a temporary database, found a runtime-only query problem (see gotchas) and fixed it.
+
+What the agent built (details differ from run to run):
+
+* `GraderLogic/<Area>/`: `IClassManagementService`, `IExamService`, `IDemoDataService` + implementations and request/response records; `GraderLogic/Errors/`: `GraderException` base with `NotFound`/`BusinessRule`/`Conflict` exceptions, all codes in one `ErrorCodes` class; `Data/DatabaseErrors.cs`: `SaveChangesTranslatingErrorsAsync` turns constraint violations into `constraint-violation` conflicts
+* `GraderApi/<Area>Endpoints.cs` (thin, public static handlers, typed results), `GraderExceptionHandler` (`IExceptionHandler` → Problem Details with `code`), validation errors get `code: validation-failed`
+* 13 endpoints in 3 tags (`ClassManagement`, `Exams`, `DemoData`), e.g. `PUT /api/classes/{classId}`, `PUT /api/exams/{examId}`, `POST /api/demo-data`; `GraderApi.http` with example requests
+* GraderApi uses `data/grader.db` and applies migrations at startup (skipped during build-time OpenAPI generation); API integration tests now run against in-memory SQLite (`GraderApiFactory`)
+* Exemplary tests: DB error translation (unit), endpoint with mocked service (unit), saving a class with added/changed/removed students against SQLite (integration), create class end to end incl. `code` (integration)
+* `tech-docs/web-api.md` extended by the agent; `AGENTS.md` index, `database.md`, `testing.md` updated
+
+Demo:
+
+```bash
+git diff HEAD~1 -- tech-docs/web-api.md     # what the agent added to our article
+dotnet run --project GraderApi              # applies migrations, creates data/grader.db if needed
+```
+
+In Scalar (`/scalar` on the backend URL) or `GraderApi/GraderApi.http`:
+
+1. `POST /api/demo-data` → 204, database filled
+2. `GET /api/school-years` → newest first; classes of a school year incl. student count; a class incl. its students
+3. `GET` an exam → all students of the class, `percentage: null` for missing results
+4. `PUT` the class without one of its students → 409 `student-has-exam-results` (whole request rejected)
+5. `DELETE` a class that has exams → 409 `class-has-exams`; `POST` a class with an empty name → 400 with field errors + `code: validation-failed`
+
+Things to show/discuss:
+
+* The article as a living document: our principles are unchanged, the agent added pointers, a use-case area table, examples to copy for tests and gotchas
+* Architecture followed: OpenAPI schemas contain only DTOs (`ClassDetails`, `ExamRequest`, …), no entity types; tags + operation names (`SaveClass`, `GetExam`) → generated Angular services `classManagement.service.ts`, `exams.service.ts`, … read like use cases
+* Agent decisions worth reviewing (all documented in `web-api.md`):
+  * Unknown id in the route → 404, unknown id in the body (e.g. `courseId`) → 400
+  * Exam results: `null` percentage and missing entry both mean "no result" → client can send back what it got from `GET`
+  * Write endpoints return the saved document via the service's own read method → `PUT`/`POST` and `GET` responses cannot drift apart
+  * Migrations at startup: convenient for the demo; discuss for production
+* Gotchas the agent found and documented:
+  * Request records live in GraderLogic, but the validation source generator only covers the assembly that calls `AddValidation()` → without `[ValidatableType]` requests are **silently not validated**
+  * SQLite cannot translate some nested collection projections (SQL `APPLY`) → fails at runtime, not at build time; found only because the agent called every endpoint
+  * SQLite sorts with binary collation: umlauts after `z` ("Özdemir" after "Zach") → documented, not fixed; good live follow-up prompt
+* The prompt contains nothing about layers, error handling or conventions – and the result still follows them
+
+Learnings:
+
+* Architecture first: humans write principles and patterns into tech docs *before* the agent session; the agent follows them and keeps the article up to date
+* Three artifacts, three jobs: spec = *what* (domain, data; step 5), tech docs = *how* (patterns, principles), prompt = *task* (scope, done criteria)
+* The prompt gets shorter: layering, error handling, API conventions apply to every future feature without repeating them
+* Agents default to generic CRUD, `DbContext` in endpoints and repositories (that's what their training data looks like) → an explicit architecture overrides the default
+* Explicit non-goals ("deliberately not done") stop agents from over-engineering
+* Stable error codes make errors testable and client-friendly
+* Exemplary tests are enough to set the pattern; the article points to them as "examples to copy"
+* Discuss: How detailed should architecture docs be? Tech docs vs. ADRs? Who writes them – human, agent, or agent drafts + human reviews?
+
+Links:
+
+* [Handle errors in ASP.NET Core APIs](https://learn.microsoft.com/aspnet/core/fundamentals/error-handling-api), [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457)
+* [Validation in ASP.NET Core](https://learn.microsoft.com/aspnet/core/fundamentals/validation) (incl. multi-assembly apps), [Typed results](https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/responses), [Route handlers and groups](https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/route-handlers)
+* [OpenAPI metadata in minimal APIs](https://learn.microsoft.com/aspnet/core/fundamentals/openapi/include-metadata)
+* [EF Core testing strategies (incl. repository pattern)](https://learn.microsoft.com/ef/core/testing/choosing-a-testing-strategy), [Unit of Work (Fowler)](https://martinfowler.com/eaaCatalog/unitOfWork.html)
+* [Applying migrations (incl. at runtime)](https://learn.microsoft.com/ef/core/managing-schemas/migrations/applying), [Collations and case sensitivity](https://learn.microsoft.com/ef/core/miscellaneous/collations-and-case-sensitivity)
+* [Architecture decision records](https://adr.github.io)
