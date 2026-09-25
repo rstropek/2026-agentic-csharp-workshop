@@ -177,7 +177,7 @@ Prompt:
 ```text
 Goal: add super simple content to smoke-test the project setup end to end (nothing grading-specific yet).
 
-- GraderLogic: Math class with an Add method behind an interface (for mocking). Negative parameters are not allowed → custom exception (to test error handling).
+- GraderLogic: Calculator class with an Add method behind an interface (for mocking). Negative parameters are not allowed → custom exception (to test error handling).
 - GraderApi: expose Add via an HTTP endpoint with good OpenAPI docs (e.g. Produces for success and error). OpenAPI spec is written to a file at build time. Scalar API docs at /scalar.
 - Angular ↔ API:
   - Development: Angular dev server proxies /api to the .NET backend.
@@ -201,7 +201,7 @@ Rehearsal: 5–7.5 min in two runs, no struggles. The agent read the Angular ski
 
 What the agent built (both runs met all requirements; names, paths and details differ from run to run):
 
-* Interface + implementation for `Add` + `NegativeParameterException` in GraderLogic (run 1: `IMath`/`Math`; run 2: `IMathOperations`/`MathOperations`, because `Math` clashes with `System.Math`)
+* Interface + implementation for `Add` + custom exception for negative parameters in GraderLogic
 * `GET /api/.../add?a=&b=` → `{ result }` or `400` ProblemDetails; endpoint handler = public static method with typed results (`Results<Ok<T>, ProblemHttpResult>`) → unit-testable without HTTP, typed results feed OpenAPI
 * OpenAPI spec written to a file in `GraderApi` on build; `npm run generate:api` (ng-openapi) generates the client into `GraderWeb/src/app/api`; spec + client are committed
 * `ng serve` proxies `/api` → backend; `ng build` outputs into `GraderApi/wwwroot`, backend serves it incl. SPA fallback
@@ -212,7 +212,7 @@ What the agent built (both runs met all requirements; names, paths and details d
 Things to show/discuss:
 
 * Walk through `tech-docs/*.md`: decisions + gotchas + pointers, no code copies
-* Agent decisions worth reviewing: committed generated client (pro: frontend builds without .NET; con: must regenerate), strict JSON number handling (otherwise spec types numbers as `integer | string`), `Math` vs. `System.Math` name clash
+* Agent decisions worth reviewing: committed generated client (pro: frontend builds without .NET; con: must regenerate), strict JSON number handling (otherwise spec types numbers as `integer | string`)
 * Gotchas the agent hit and documented (run 2): double `/api` (ng-openapi base path + spec paths), `<input type="number">` without `step="any"` blocks decimals (only the e2e test caught it)
 * Non-determinism: same prompt, different names, paths, number types (`int` vs. `decimal`) and even policies (run 1 exposed `/scalar` in all environments, run 2 only in Development) → review decisions, write down the ones that matter (tech docs, prompt)
 * Try it: `dotnet run --project GraderApi` + `cd GraderWeb && npm start` → http://localhost:4200, API docs at `/scalar` (backend URL, Development)
@@ -297,3 +297,88 @@ Links:
 
 * [.NET code analysis](https://learn.microsoft.com/dotnet/fundamentals/code-analysis/overview), [`dotnet format`](https://learn.microsoft.com/dotnet/core/tools/dotnet-format)
 * [Biome](https://biomejs.dev)
+
+---
+
+## Step 5 – Database (spec-driven)
+
+Goal: SQLite + EF Core data model for the grading domain. The requirements come from a **spec file**, not from the prompt: the prompt says *what to do*, the spec says *what the data looks like*.
+
+Preparation: copy the spec from the workshop materials (next to this storyboard) into the repo:
+
+```bash
+mkdir -p spec && cp <workshop-materials>/2026-09-storyboard_erdiagram.md spec/
+```
+
+Walk through the spec (`spec/2026-09-storyboard_erdiagram.md`):
+
+* Mermaid ER diagram (renders on GitHub/VS Code, readable for humans *and* agents): 6 entities, types, lengths, keys
+* Constraints and rules in plain text: unique combinations, no cascading deletes, percentage 0–100, "all constraints must be enforced by the database"
+* Test data generator: school years relative to today, classes per level, 20 Bogus students per class, 5 courses, 4 exams per course/class, normally distributed percentages, 2 missing results per exam
+* Written *before* the agent session, reviewed like code (it took several review rounds to remove contradictions, e.g. 0–1 vs. 0–100, results for future exams yes/no)
+
+Prompt:
+
+```text
+Add a database. The data model is specified in ./spec/2026-09-storyboard_erdiagram.md.
+
+- SQLite with EF Core. The database file lives in ./data (relative to the repo root). Keep the folder in git, but not its content.
+- Add Microsoft.EntityFrameworkCore.Sqlite and Microsoft.EntityFrameworkCore.Design to GraderLogic with `dotnet package add`.
+- Data model and DbContext in GraderLogic according to the spec.
+- Generating and applying migrations must work from the GraderLogic project.
+- Test data generator (see spec) in a separate class. An integration test runs it and verifies the row counts.
+- Exemplary integration tests for database constraints:
+  - Adding a duplicate SchoolYear.Name fails.
+  - Deleting a SchoolYear that has SchoolClass records fails.
+  - Adding an ExamResult with a Percentage of 101 fails.
+- AGENTS.md: ./spec contains specifications. They are historical and not always kept up to date, so they might not reflect the current state of the system if they were written a while ago. If a spec contradicts code or tech docs, code and tech docs win; ask if unsure.
+- New tech docs article tech-docs/database.md (follow the tech docs rules in AGENTS.md).
+- Done when the QA script is green. Then commit directly to main.
+```
+
+Rehearsal: ~5 min, no struggles, no questions (the spec has no contradictions). The agent checked the EF Core 11 breaking changes (Learn CLI) and added the EF Core packages and `dotnet-ef` with `--prerelease` (thanks to the .NET 11 note in `AGENTS.md` from step 2).
+
+What the agent built (details differ from run to run):
+
+* `GraderLogic/Data/`: one class per entity, `GraderDbContext` (all constraints in `OnModelCreating`), `IDesignTimeDbContextFactory` → `dotnet ef` works with GraderLogic as startup project, database path = `data/grader.db` in the repo root
+* Initial migration in `GraderLogic/Migrations/`; `data/.gitkeep` + `.gitignore` for `data/*`
+* Database-enforced constraints: unique indexes, `ON DELETE RESTRICT` on every FK, check constraint for `Percentage` – and check constraints for max lengths (SQLite ignores `TEXT` lengths)
+* `TestDataGenerator` (Bogus, `TimeProvider` for "current year", optional seed), throws on non-empty database
+* Tests in `GraderTests/Integration/Data/` against in-memory SQLite with the real migrations: exact row counts (3 school years, 30 classes, 600 students, 5 courses, 600 exams, 10,800 results), distribution sanity check, non-empty DB throws, the three constraint tests (asserting the SQLite error code)
+* Local tool manifest `dotnet-tools.json` with `dotnet-ef` 11 RC; `tech-docs/database.md`; `AGENTS.md` with spec note + first-time setup `dotnet tool restore`
+
+Demo:
+
+```bash
+dotnet tool restore
+cd GraderLogic
+dotnet ef migrations has-pending-model-changes   # "No changes have been made to the model since the last migration."
+dotnet ef database update                          # creates ../data/grader.db
+sqlite3 ../data/grader.db ".schema ExamResults"    # CHECK + ON DELETE RESTRICT in the DB schema
+cd .. && git status                                # clean: database file is ignored
+```
+
+Things to show/discuss:
+
+* Spec → non-obvious decisions: "enforced by the database" made the agent add `length(...) <= n` checks because SQLite ignores declared lengths
+* Tests prove that the **database** rejects the change: violating changes are saved with a context that does not track the conflicting rows (otherwise EF Core throws before sending SQL); asserts SQLite error codes (RESTRICT is reported as 1811 `SQLITE_CONSTRAINT_TRIGGER`, not 787 – agent found out by running the test)
+* Gotchas the agent found and documented:
+  * Global `dotnet-ef` (10.x) does not match EF Core 11 → local tool manifest
+  * Generated migrations violate analyzers → `generated_code = true` for `GraderLogic/Migrations/**.cs` in `.editorconfig` (documented reason, see step 4 rule)
+* Deterministic test data: exact counts because the spec fixes all numbers; `TimeProvider` + seed make the rest reproducible
+* `AGENTS.md` spec note: "specs are historical, code and tech docs win, ask if unsure" – the agent did not ask because the spec is consistent (educational: in interactive sessions the agent stops and asks)
+
+Learnings:
+
+* Prepare agentic tasks with artifacts, not just prompts: spec = *what* (domain, rules, data), prompt = *task* (scope, tools, done criteria), tech docs = *how* (written by the agent, maintained with the code)
+* Review specs like code: contradictions in the spec become random behavior of the agent
+* Specs age: code and tech docs are the source of truth; say so in `AGENTS.md` and let the agent ask if unsure
+* "Enforced by the database" + exemplary tests → agent tests constraints against the real schema, not against EF Core
+* Discuss: keep specs after implementation? Where (`spec/` in the repo, wiki, issue tracker)? Date-prefixed file names show their age
+
+Links:
+
+* [EF Core SQLite provider](https://learn.microsoft.com/ef/core/providers/sqlite/), [SQLite limitations](https://learn.microsoft.com/ef/core/providers/sqlite/limitations)
+* [Migrations](https://learn.microsoft.com/ef/core/managing-schemas/migrations/), [`dotnet ef` CLI](https://learn.microsoft.com/ef/core/cli/dotnet), [Design-time DbContext creation](https://learn.microsoft.com/ef/core/cli/dbcontext-creation)
+* [EF Core 11 breaking changes](https://learn.microsoft.com/ef/core/what-is-new/ef-core-11.0/breaking-changes), [.NET local tools](https://learn.microsoft.com/dotnet/core/tools/local-tools-how-to-use)
+* [Mermaid ER diagrams](https://mermaid.js.org/syntax/entityRelationshipDiagram.html), [Bogus](https://github.com/bchavez/Bogus), [SQLite result codes](https://sqlite.org/rescode.html)
