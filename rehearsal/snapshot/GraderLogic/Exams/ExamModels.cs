@@ -24,6 +24,8 @@ public record ExamDetails(
     [property: Description("Name of the course of the exam.")] string CourseName,
     [property: Description("Id of the class that took the exam.")] int ClassId,
     [property: Description("Name of the class that took the exam.")] string ClassName,
+    [property: Description("Id of the school year of the class.")] int SchoolYearId,
+    [property: Description("Name of the school year of the class.")] string SchoolYearName,
     [property: Description("One entry per student of the class, sorted by last name and first name.")]
     IReadOnlyList<ExamStudentResult> Results);
 

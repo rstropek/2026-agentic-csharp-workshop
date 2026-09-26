@@ -15,16 +15,22 @@ import { FieldTree } from '@angular/forms/signals';
   `,
 })
 export class FieldError {
-  readonly field = input.required<FieldTree<string>>();
+  readonly field = input.required<FieldTree<unknown>>();
+  /**
+   * Message for input the browser cannot parse (e.g. "1e" in a number field); Signal Forms report
+   * it as a `parse` error without a message.
+   */
+  readonly parseMessage = input('Invalid value');
 
   protected readonly message = computed(() => {
     const state = this.field()();
-    return state.touched() ? state.errors()[0]?.message : undefined;
+    const error = state.touched() ? state.errors()[0] : undefined;
+    return error && (error.message ?? (error.kind === 'parse' ? this.parseMessage() : undefined));
   });
 }
 
 /** `aria-invalid` value for a control: invalid fields are only marked once touched. */
-export function ariaInvalid(field: FieldTree<string>): 'true' | null {
+export function ariaInvalid(field: FieldTree<unknown>): 'true' | null {
   const state = field();
   return state.touched() && state.invalid() ? 'true' : null;
 }

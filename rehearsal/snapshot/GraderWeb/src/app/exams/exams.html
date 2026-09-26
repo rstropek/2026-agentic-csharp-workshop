@@ -1,0 +1,97 @@
+<div class="layout">
+  <div class="list-column">
+    <h1 class="page-title">Exams</h1>
+
+    <label class="field class-filter">
+      <span class="field-label">Class</span>
+      <select
+        class="input"
+        [disabled]="store.classList().length === 0"
+        (change)="selectClass($event)"
+      >
+        @for (schoolClass of store.classList(); track schoolClass.id) {
+          <option [value]="schoolClass.id" [selected]="schoolClass.id === store.selectedClassId()">
+            {{ schoolClass.name }}
+          </option>
+        } @empty {
+          <option>{{ store.classes.isLoading() ? 'Loading…' : 'None' }}</option>
+        }
+      </select>
+    </label>
+
+    <button
+      type="button"
+      class="btn btn-primary new-exam"
+      [disabled]="store.selectedClassId() === undefined"
+      (click)="newExam()"
+    >
+      New exam
+    </button>
+
+    @if (schoolYears.years.error()) {
+      <app-load-error
+        subject="The school years"
+        [error]="schoolYears.years.error()"
+        (retry)="schoolYears.reload()"
+      />
+    } @else if (!schoolYears.years.isLoading() && schoolYears.list().length === 0) {
+      <p class="empty muted">
+        There are no school years yet. You can fill the database with demo data in the
+        <a class="link" routerLink="/settings" href="/settings">settings</a>.
+      </p>
+    } @else if (store.classes.error()) {
+      <app-load-error
+        subject="The classes"
+        [error]="store.classes.error()"
+        (retry)="store.classes.reload()"
+      />
+    } @else if (store.classes.hasValue() && store.classList().length === 0) {
+      <p class="empty muted">
+        There are no classes in this school year yet. Add them in
+        <a class="link" routerLink="/classes" href="/classes">Classes</a>.
+      </p>
+    } @else if (store.exams.error()) {
+      <app-load-error
+        subject="The exams"
+        [error]="store.exams.error()"
+        (retry)="store.exams.reload()"
+      />
+    } @else if (store.exams.hasValue() && store.exams.status() !== 'loading') {
+      <p class="overline list-head">{{ examCount() }} · by date</p>
+      <ul class="exam-list" [attr.aria-label]="'Exams of class ' + store.selectedClass()?.name">
+        @for (exam of store.exams.value(); track exam.id) {
+          <li>
+            <a
+              class="exam-row"
+              routerLink="/exams/{{ exam.id }}"
+              href="/exams/{{ exam.id }}"
+              routerLinkActive="selected"
+              ariaCurrentWhenActive="page"
+            >
+              <span class="small date tabular">{{ exam.examDate | date: 'dd MMM yyyy' }}</span>
+              <span class="course">{{ exam.courseName }}</span>
+            </a>
+          </li>
+        } @empty {
+          <li class="empty muted">No exams yet. Create one with “New exam”.</li>
+        }
+      </ul>
+    } @else {
+      <div role="status" aria-busy="true" aria-label="Loading exams">
+        <p class="list-head"><app-skeleton width="120px" height="11px" /></p>
+        <div class="exam-list">
+          @for (placeholder of placeholders; track placeholder) {
+            <div class="exam-row">
+              <app-skeleton width="80px" height="12px" />
+              <app-skeleton width="144px" height="15px" />
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="detail">
+    <router-outlet />
+  </div>
+</div>

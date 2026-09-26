@@ -28,7 +28,15 @@ public class ExamService(GraderDbContext dbContext) : IExamService
         var exam = await dbContext.Exams
             .Where(exam => exam.Id == examId)
             .Select(exam => new ExamDetails(
-                exam.Id, exam.ExamDate, exam.CourseId, exam.Course.Name, exam.SchoolClassId, exam.SchoolClass.Name, Array.Empty<ExamStudentResult>()))
+                exam.Id,
+                exam.ExamDate,
+                exam.CourseId,
+                exam.Course.Name,
+                exam.SchoolClassId,
+                exam.SchoolClass.Name,
+                exam.SchoolClass.SchoolYearId,
+                exam.SchoolClass.SchoolYear.Name,
+                Array.Empty<ExamStudentResult>()))
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw ExamNotFound(examId);
 

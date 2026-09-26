@@ -1,0 +1,96 @@
+/* 400px list column | 2px rule | detail; the rule runs down to the bottom of the window. */
+.layout {
+  display: grid;
+  grid-template-columns: 400px minmax(0, 1fr);
+  min-height: calc(100vh - var(--header-height));
+}
+
+.list-column {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-8) var(--space-6);
+  border-right: var(--rule-strong);
+}
+
+.class-filter {
+  margin-top: var(--space-6);
+}
+
+.new-exam {
+  justify-content: center;
+  margin-top: var(--space-4);
+}
+
+.list-head {
+  display: block;
+  margin-top: var(--space-8);
+  padding: 0 var(--space-3) var(--space-2);
+  font-size: var(--font-size-column-header);
+}
+
+.exam-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--rule);
+}
+
+.exam-row {
+  display: flex;
+  flex-direction: column;
+  padding: 10px var(--space-3);
+  border-bottom: var(--rule);
+}
+
+/* Skeleton rows have the height of the real rows. */
+div.exam-row {
+  gap: var(--space-2);
+  padding-block: 14px;
+}
+
+.list-head app-skeleton {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+a.exam-row:hover {
+  background: var(--color-cell-hover);
+}
+
+a.exam-row:focus-visible {
+  outline-offset: -2px;
+}
+
+.date {
+  color: var(--color-muted);
+}
+
+.course {
+  font-weight: var(--font-weight-semibold);
+}
+
+.exam-row.selected {
+  background: var(--color-accent-tint);
+  color: var(--color-accent-dark);
+}
+
+.exam-row.selected .date {
+  color: inherit;
+}
+
+.exam-row.selected .course {
+  font-weight: var(--font-weight-heavy);
+}
+
+.empty {
+  margin-top: var(--space-6);
+}
+
+.exam-list .empty {
+  padding: 0 var(--space-3);
+}
+
+.detail {
+  min-width: 0;
+  padding: var(--space-8);
+}

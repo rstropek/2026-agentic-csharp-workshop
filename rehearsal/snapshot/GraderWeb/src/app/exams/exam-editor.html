@@ -1,0 +1,143 @@
+<form [formRoot]="examForm" novalidate>
+  @if (loaded.error()) {
+    <app-load-error subject="The exam" [error]="loaded.error()" (retry)="loaded.reload()" />
+  } @else if (store.courses.error()) {
+    <app-load-error
+      subject="The courses"
+      [error]="store.courses.error()"
+      (retry)="store.courses.reload()"
+    />
+  } @else if (!loadedExam() || !store.courses.hasValue()) {
+    <!-- Mirrors the layout below, so nothing jumps when the exam arrives. -->
+    <div role="status" aria-busy="true" aria-label="Loading exam">
+      <p class="overline"><app-skeleton width="136px" height="12px" /></p>
+      <div class="head skeleton-head">
+        <app-skeleton width="280px" height="32px" />
+      </div>
+      <div class="fields">
+        <!-- The empty span stands for the error slot of the real fields. -->
+        <div class="field">
+          <app-skeleton class="label-skeleton" width="32px" height="12px" />
+          <app-skeleton width="200px" height="36px" />
+          <span></span>
+        </div>
+        <div class="field">
+          <app-skeleton class="label-skeleton" width="48px" height="12px" />
+          <app-skeleton width="260px" height="36px" />
+          <span></span>
+        </div>
+      </div>
+      <div class="section">
+        <p class="section-title"><app-skeleton width="200px" height="20px" /></p>
+        <div class="columns">
+          @for (column of skeletonColumns; track $index) {
+            <div>
+              <div class="skeleton-row skeleton-columns">
+                <app-skeleton width="64px" height="11px" />
+                <app-skeleton width="80px" height="11px" />
+              </div>
+              @for (row of column; track row) {
+                <div class="skeleton-row">
+                  <app-skeleton width="160px" height="12px" />
+                  <app-skeleton width="104px" height="24px" />
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  } @else {
+    @let exam = loadedExam()!;
+    <p class="overline">Class {{ exam.className }} · {{ exam.schoolYearName }}</p>
+    <div class="head">
+      <h2 class="detail-title">{{ title() }}</h2>
+      <div class="toolbar">
+        @if (serverError(); as message) {
+          <p class="error-text" role="alert">{{ message }}</p>
+        } @else if (showErrorCount()) {
+          <p class="error-text" role="status">
+            {{ invalidFieldCount() }}
+            {{ invalidFieldCount() === 1 ? 'field needs' : 'fields need' }} attention
+          </p>
+        } @else if (showSaved()) {
+          <p class="small muted" role="status">Saved</p>
+        }
+        @if (!isNew()) {
+          <button type="button" class="btn btn-ghost" [disabled]="busy()" (click)="deleteExam()">
+            {{ deleting() ? 'Deleting…' : 'Delete exam' }}
+          </button>
+        }
+        <button type="submit" class="btn btn-primary" [disabled]="busy()">
+          {{ examForm().submitting() ? 'Saving…' : 'Save exam' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="fields">
+      <label class="field">
+        <span class="field-label">Date</span>
+        <input
+          type="date"
+          class="input date"
+          [formField]="examForm.examDate"
+          [attr.aria-invalid]="ariaInvalid(examForm.examDate)"
+          aria-describedby="exam-date-error"
+        />
+        <app-field-error id="exam-date-error" [field]="examForm.examDate" />
+      </label>
+      <label class="field">
+        <span class="field-label">Course</span>
+        <select
+          class="input course"
+          [formField]="examForm.courseId"
+          [attr.aria-invalid]="ariaInvalid(examForm.courseId)"
+          aria-describedby="course-error"
+        >
+          <option value="" disabled>Select a course</option>
+          @for (course of store.courses.value(); track course.id) {
+            <option [value]="course.id">{{ course.name }}</option>
+          }
+        </select>
+        <app-field-error id="course-error" [field]="examForm.courseId" />
+      </label>
+    </div>
+
+    <section class="section" aria-labelledby="results-title">
+      <div class="results-head">
+        <h3 id="results-title" class="section-title">Results</h3>
+        <span class="small muted tabular" role="status">
+          {{ enteredCount() }} of {{ examForm.results.length }} entered
+        </span>
+      </div>
+
+      @if (columns().length === 0) {
+        <p class="empty muted">The class has no students.</p>
+      }
+      <div class="columns">
+        @for (column of columns(); track $index) {
+          <table class="table results">
+            <thead>
+              <tr>
+                <th scope="col" class="student">Student</th>
+                <th scope="col" class="percentage">Percentage</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (index of column; track examForm.results[index]) {
+                @let result = examForm.results[index];
+                @let name = result.lastName().value() + ', ' + result.firstName().value();
+                <tr>
+                  <td class="student">{{ name }}</td>
+                  <td class="percentage">
+                    <app-percentage-field [field]="result.percentage" [label]="'Percentage of ' + name" />
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </section>
+  }
+</form>

@@ -186,3 +186,34 @@ The web UI works, the QA script passes all 8 sections, and everything is committ
 - **Router links carry an extra `href`:** Biome's `useValidAnchor` rule doesn't recognize `routerLink`, so each router link also h
 --- after step7a: branch=main head=a709eac Add web UI foundation and class management, remove calculator
 OK step7a
+committed step 7a
+=== step 7b (17:26:00)
+Duration: 1165s
+success turns: 97 cost: 7.977831799999999
+The Exams area is built, the full `scripts/qa.sh` run passed (8/8 sections, no build warnings), and it's committed to main as `f5f0501`.
+
+**What's there**
+- **Exams page:** a 400px left column with the class filter, a "New exam" button and the list of exams sorted by date. The selected exam opens on the right, at `/exams/new` or `/exams/:examId`. Like the school year, the class filter is kept in memory, not in the URL. Opening an exam by link switches the school year and class to match it, and picking another class closes the open exam.
+- **Exam editor:** date, course and one percentage per student, split into two columns. "Save exam" sends every student in one request; an empty field means "no result". It also has the "n of m entered" counter, "n fields need attention", Delete with a confirmation dialog, a "Saved" note and loading placeholders that match the final layout.
+- **Reused/extended design system:** a new `PercentageField` base component with its 0–100 validation rules. `FieldError` now works for number fields too and shows a message when the browser can't read the input (e.g. "1e").
+- **One small API change:** an exam now includes its school year. Without it, opening an exam by link couldn't select the right year or show "CLASS 2B · 2026/27". The integration test and the OpenAPI spec are updated.
+
+**Tests**
+- **Percentage field:** decimals accepted, empty means no result, 0 and 100 are valid, and 104 / -1 / 100.5 show "Must be 0–100".
+- **Entering results:** save sends all results including the empty ones; an out-of-range value blocks saving and gets the focus; server errors are shown; creating a new exam works.
+- **Playwright:** the E2E test creates its own class, then a new exam, enters results (Tab order, a range error, fixing it), saves, edits and reloads.
+
+**Browser check at 1920×1080:** I took exact-size screenshots in Chromium and then checked in Chrome, in light and dark mode. The first comparison with mockups 03/05 showed four differences, which I fixed:
+- the exam list started about 7px too high;
+- the Date/Course row sat about 8px too high;
+- the percentage column was too wide;
+- Chrome's number arrows covered the right-aligned value.
+
+Positions now match within a pixel or two. The browser still formats dates and decimals in your locale ("12.10.2026", "67,5") instead of the mockups' "24 Sep 2026" and "67.5", because the design asks for native fields.
+
+**Things worth knowing**
+- **Framework bug found:** Angular's forms mark a form as changed as soon as a date field appears, so "Saved" vanished right after creating an exam. The editor now shows "Saved" while the form still equals the saved exam, and this is written up in `ui.md`.
+- **Skill guidance ignored on purpose:** the `angular-developer` skill says never to use `null` in form fields. Angular 22 does support an empty number field as `null`, so I used that and noted it in `ui.md`.
+- **Your running dev servers:** the ones on 4200/5100 were already running with the old API b
+--- after step7b: branch=main head=f5f0501 Add exams UI: exam list, results entry, percentage field
+OK step7b

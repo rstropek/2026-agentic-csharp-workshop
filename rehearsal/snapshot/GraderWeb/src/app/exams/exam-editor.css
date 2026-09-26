@@ -1,0 +1,87 @@
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-top: var(--space-1);
+}
+
+/* Skeletons inside text lines keep the line height of the text. */
+p > app-skeleton {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.skeleton-head {
+  min-height: var(--control-height);
+}
+
+.label-skeleton {
+  margin-block: 2px;
+}
+
+.fields {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin: var(--space-6) 0 var(--space-4);
+}
+
+.date {
+  width: 200px;
+}
+
+.course {
+  width: 260px;
+}
+
+.results-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* Two equal columns (first half of the students left), 40px gap. */
+.columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 40px;
+  margin-top: var(--space-4);
+}
+
+.results {
+  table-layout: fixed;
+}
+
+.results .student {
+  padding-left: var(--space-2);
+}
+
+td.student {
+  padding-top: 13px;
+}
+
+/* Field (104px), "%" and the cell padding. */
+.results .percentage {
+  width: 140px;
+}
+
+.empty {
+  margin-top: var(--space-4);
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 49px;
+  padding: 0 36px 0 var(--space-2);
+  border-bottom: var(--rule);
+}
+
+/* Column headers: same height and rule as the table header. */
+.skeleton-columns {
+  height: 35px;
+  padding-right: 60px;
+  border-bottom: var(--rule-strong);
+}

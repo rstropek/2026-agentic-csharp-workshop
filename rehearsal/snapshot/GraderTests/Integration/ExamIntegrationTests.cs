@@ -23,6 +23,7 @@ public class ExamIntegrationTests(GraderApiFactory factory) : IClassFixture<Grad
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var result = await response.Content.ReadFromJsonAsync<ExamDetails>(ct);
         Assert.Equal(new DateOnly(2025, 11, 3), result?.ExamDate);
+        Assert.Equal("2025/26", result?.SchoolYearName);
         Assert.Equal(
             [new ExamStudentResult(ada.Id, "Ada", "Lovelace", null), new ExamStudentResult(alan.Id, "Alan", "Turing", 55.5)],
             result?.Results);

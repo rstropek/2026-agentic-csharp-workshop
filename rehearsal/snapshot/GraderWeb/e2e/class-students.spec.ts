@@ -1,27 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
-
-// Every test works on its own class (unique name) or does not save, so tests are independent of
-// each other and of the order in which they run.
-function uniqueClassName() {
-  return `E2E ${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
-}
-
-const lastNames = (page: Page) => page.getByRole('textbox', { name: 'Last name' });
-const firstNames = (page: Page) => page.getByRole('textbox', { name: 'First name' });
-
-async function addStudent(page: Page, lastName: string, firstName: string) {
-  await page.getByRole('button', { name: 'Add student' }).click();
-  // The new row is inserted on top and its last name gets the focus.
-  await expect(lastNames(page).first()).toBeFocused();
-  await page.keyboard.type(lastName);
-  await page.keyboard.press('Tab');
-  await page.keyboard.type(firstName);
-}
-
-async function saveClass(page: Page) {
-  await page.getByRole('button', { name: 'Save class' }).click();
-  await expect(page.getByRole('status')).toHaveText('Saved');
-}
+import { addStudent, firstNames, lastNames, saveClass, uniqueClassName } from './helpers';
 
 async function expectStudents(page: Page, students: [string, string][]) {
   await expect(lastNames(page)).toHaveCount(students.length);

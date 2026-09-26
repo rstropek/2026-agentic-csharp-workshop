@@ -737,6 +737,8 @@
           "courseName",
           "classId",
           "className",
+          "schoolYearId",
+          "schoolYearName",
           "results"
         ],
         "type": "object",
@@ -768,6 +770,15 @@
           "className": {
             "type": "string",
             "description": "Name of the class that took the exam."
+          },
+          "schoolYearId": {
+            "type": "integer",
+            "description": "Id of the school year of the class.",
+            "format": "int32"
+          },
+          "schoolYearName": {
+            "type": "string",
+            "description": "Name of the school year of the class."
           },
           "results": {
             "type": "array",

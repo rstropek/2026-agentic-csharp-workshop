@@ -21,6 +21,22 @@ export const routes: Routes = [
     path: 'exams',
     title: 'Exams · Grader',
     loadComponent: () => import('./exams/exams').then((m) => m.Exams),
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./exams/no-exam-selected').then((m) => m.NoExamSelected),
+      },
+      {
+        path: 'new',
+        title: 'New exam · Grader',
+        loadComponent: () => import('./exams/exam-editor').then((m) => m.ExamEditor),
+      },
+      {
+        path: ':examId',
+        title: 'Exam · Grader',
+        loadComponent: () => import('./exams/exam-editor').then((m) => m.ExamEditor),
+      },
+    ],
   },
   {
     path: 'settings',
