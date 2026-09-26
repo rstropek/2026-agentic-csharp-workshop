@@ -8,7 +8,7 @@ Grader is a grading app for teachers and students. The repository contains the f
 - `GraderLogic`: class library with the core grading domain logic and the database (EF Core, SQLite), used by the API.
 - `GraderTests`: xUnit v3 tests (Microsoft Testing Platform, NSubstitute, `Microsoft.AspNetCore.Mvc.Testing`) for the logic, API and CLI.
 - `GraderWeb`: Angular frontend (see `GraderWeb/AGENTS.md` for Angular-specific guidelines).
-- `GraderCli`: the `grader` command-line interface for the Web API (.NET global tool), for AI agents and humans. Calls the API through a generated Kiota client (see `tech-docs/cli.md`).
+- `GraderCli`: the `grader` command-line interface for the Web API (.NET global tool), for AI agents and humans. Calls the API through a generated Kiota client (see `tech-docs/cli.md`). Agents doing a teacher's tasks with it use the `grader-cli` skill.
 
 Other folders:
 
@@ -52,7 +52,7 @@ Do not suppress findings (`#pragma`, `NoWarn`, `biome-ignore`, severity changes)
 
 Every structural API change (endpoints, parameters, request/response shapes, status codes) includes, in the same change:
 
-- regenerating the CLI's API client with `scripts/generate-cli-client.sh` (never edit `GraderCli/ApiClient` by hand), then adapting the CLI commands: a command per new use case, updated descriptions (incl. error codes) and examples. `scripts/qa.sh` fails if the client is out of date.
+- regenerating the CLI's API client with `scripts/generate-cli-client.sh` (never edit `GraderCli/ApiClient` by hand), then adapting the CLI commands: a command per new use case, updated descriptions (incl. error codes) and examples, and the `grader-cli` skill if teacher workflows change. `scripts/qa.sh` fails if the client is out of date.
 - committing the regenerated OpenAPI spec (any build of `GraderApi` updates it, see `tech-docs/api-client.md`).
 
 ## Technology Versions

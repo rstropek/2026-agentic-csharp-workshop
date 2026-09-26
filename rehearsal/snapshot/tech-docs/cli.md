@@ -36,6 +36,10 @@ scripts/generate-cli-client.sh --check   # fails if the committed client is out 
 - **Help with examples:** every command's description contains the API's error codes, and `--help` shows its examples. The root help also describes output, input, exit codes and the environment.
 - **API URL:** `--api-url` overrides the environment variable `GRADER_API_URL`, which overrides the default `http://localhost:5100` (the development API). The help shows the effective default.
 
+## Skill for teacher tasks
+
+The project skill `grader-cli` (`.agents/skills/grader-cli`, linked into `.claude/skills`) teaches agents to do a teacher's everyday tasks with the CLI: workflows (finding ids by name, get → edit → save of complete documents) and domain pitfalls (missing result ≠ 0, destructive commands). It deliberately does not repeat `--help`. Update it when a change affects these workflows, e.g. a new use case, command or business rule.
+
 ## Building, installing and updating
 
 The CLI is packaged as a .NET global tool (`PackAsTool`, command `grader`). It needs the .NET 11 runtime.

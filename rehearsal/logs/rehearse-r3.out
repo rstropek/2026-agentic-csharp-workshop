@@ -250,3 +250,29 @@ Ids are arguments. `create` and `save` take the complete document as JSON from `
 - **With a mocked service:** a 404 turning into an error message and exit code 4 (as text a
 --- after step8a: branch=main head=708a70d Add grader CLI (GraderCli) mirroring the Web API
 OK step8a
+committed step 8a
+=== step 8b (18:04:17)
+demo data reset (/api/demo-data)
+Duration: 393s
+success turns: 10 cost: 3.2627794000000008
+I created the `grader-cli` project skill in `.agents/skills/grader-cli/SKILL.md` and linked it into `.claude/skills/`. `scripts/qa.sh` passes (9 of 9), and it's committed directly to main as `eef3928`.
+
+**What the skill covers** (workflows and pitfalls, not a repeat of `--help`):
+- **Before starting:** use `grader` if installed, otherwise build once and use `dotnet run --no-build`. The API must be running (exit code 6 means it isn't); the agent should tell the teacher how to start it, not switch to another URL.
+- **Finding ids:** always look them up by name, starting from the school year, because ids change when demo data is regenerated. It also covers "last school year", "Wednesday", and what to do when a name matches no one or more than one student.
+- **Changing data:** always get the current document, edit only what was asked, and save the whole thing, because `save` removes any students or results missing from the list. New students need an explicit `"id": null`; without it the API only says `invalid-request`.
+- **Setting up a class:** how to split names into first and last name ("Last, First", all-caps last names, double first names).
+- **Recording results:** a missing result is not 0; points are converted to percentages, rounded to one decimal; if the exam doesn't exist yet, create it.
+- **Answering questions:** there are no statistics commands, so the agent gathers all exams of a class and computes averages itself, leaving out missing results. When ranking students, it flags anyone with fewer results. The app stores percentages only, not grades.
+- **Destructive commands:** only when the teacher explicitly asks. Errors like `class-has-exams` are never a reason to delete something.
+
+**Test tasks:** I ran three against the dev API with demo data, with the skill only. Baseline runs without the skill would have written to the same database at the same time.
+1. **Set up class 1D from 7 messy names:** correct, including "MÜLLER Sophie" → Sophie Müller, Öztürk and O'Brien.
+2. **Enter points out of 40 for 2B and fix one English result:** created the exam with 18 results. The sick student and the ungraded one got no result, not 0. In the English exam only Richie's result changed; the other results, including the two empty ones, stayed as they were.
+3. **Averages and missed exams for a student, plus the best in Math:** the numbers match what I computed myself. It also pointed out that the student with the highest Math average had only 2 of 4 results.
+
+I then revised the skill based on what the test agents found unclear. I did not re-run the tests after these revisions. The test data (class 1D, the new Math exam, Richie's changed result) has been removed or restored, so the dev database is as it was.
+
+**Also in the commit:** `tech-docs/cli.md` and `AGENTS.md` now point to the skill and say to update it when teacher workflows change. The test prompts are in `/tmp/grader-cli-workspace/evals.json` and not committed; tell me if you'd like them in the repo
+--- after step8b: branch=main head=eef3928 Add grader-cli skill for teacher tasks with the CLI
+OK step8b
