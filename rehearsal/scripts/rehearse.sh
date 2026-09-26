@@ -30,10 +30,14 @@ stop_api() { lsof -ti tcp:5100 -sTCP:LISTEN | xargs kill 2>/dev/null || true; }
 start_api() {  # (re)start the API from the current code
   stop_api
   (cd "$R/grader" && dotnet run --project GraderApi >> "$R/logs/api-$RUN.log" 2>&1 &)
-  for _ in $(seq 1 90); do curl -fs -o /dev/null http://localhost:5100/api/school-years && return; sleep 1; done
+  for _ in $(seq 1 90); do api_up && return; sleep 1; done
   echo "API did not start"; exit 1
 }
-reset_demo_data() { curl -fsS -o /dev/null -X POST http://localhost:5100/api/demo-data && echo "demo data reset"; }
+api_up() { [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:5100/openapi/v1.json)" = 200 ]; }
+reset_demo_data() {  # POST to the demo data endpoint (path taken from the OpenAPI spec, the agent names it)
+  local path; path=$(curl -fs http://localhost:5100/openapi/v1.json | jq -r '.paths | to_entries[] | select((.key | test("demo"; "i")) and .value.post) | .key' | head -1)
+  curl -fsS -o /dev/null -X POST "http://localhost:5100$path" && echo "demo data reset ($path)"
+}
 trap stop_api EXIT
 
 MCP_ARGS=""
@@ -70,13 +74,13 @@ run_step() {
     8b) start_api && reset_demo_data; agent 8b && check step8b ;;
     8c) # teacher prompts with CLI + skill: no code changes, no commit
       start_api && reset_demo_data; agent 8c; echo "--- after 8c (expected: no changes)"; git -C grader status --short ;;
-    8d) curl -fs -o /dev/null http://localhost:5100/api/school-years || start_api
+    8d) api_up || start_api
       agent 8d; echo "--- after 8d (expected: no changes)"; git -C grader status --short ;;
     9a) stop_api; agent 9a && check step9a ;;
     9b) # teacher prompts of 8c/8d via the MCP tools only (no shell)
       start_api && reset_demo_data; mcp_config
       CLAUDE_EXTRA_ARGS="$MCP_ARGS" agent 9b; echo "--- after 9b (expected: no changes)"; git -C grader status --short ;;
-    9c) curl -fs -o /dev/null http://localhost:5100/api/school-years || start_api
+    9c) api_up || start_api
       [ -n "$MCP_ARGS" ] || mcp_config
       CLAUDE_EXTRA_ARGS="$MCP_ARGS" agent 9c; echo "--- after 9c (expected: no changes)"; git -C grader status --short ;;
     10) stop_api; agent 10 && check step10 ;;

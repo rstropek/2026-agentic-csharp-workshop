@@ -1,0 +1,11 @@
+@GraderApi_HostAddress = http://localhost:5100
+
+GET {{GraderApi_HostAddress}}/openapi/v1.json
+Accept: application/json
+
+###
+
+GET {{GraderApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

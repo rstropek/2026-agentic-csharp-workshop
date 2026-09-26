@@ -11,7 +11,7 @@ dotnet new gitignore
 dotnet new sln -n Grader
 
 dotnet new classlib -n GraderLogic -o GraderLogic
-dotnet new webapi   -n GraderApi   -o GraderApi
+dotnet new webapi   -n GraderApi   -o GraderApi   --kestrelHttpPort 5100 --kestrelHttpsPort 7100
 dotnet new xunit    -n GraderTests -o GraderTests --xunit-version v3
 dotnet sln add GraderLogic GraderApi GraderTests
 
