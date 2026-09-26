@@ -323,3 +323,33 @@ In 2025/26, the students with the lowest Mathematics averages are Natalie Olson,
 
 I only read data and didn't change anything. I ran the CLI locally against the development API.
 --- after 8d (expected: no changes)
+committed step 8d
+=== step 9a (18:12:44)
+Duration: 1339s
+success turns: 82 cost: 5.657982400000001
+`grader mcp` now runs Grader as an MCP server over stdio. The tests and the full `scripts/qa.sh` pass (all 9 sections, including E2E), and it's committed to `main` as `ac59634`.
+
+**How it's built**
+- It uses the official C# SDK, `ModelContextProtocol.Core` 2.2.0, which supports the 2026-07-28 revision. I didn't write any code for older revisions. I also didn't pin the server to 2026-07-28: the SDK still supports the old `initialize` handshake at no cost to us, so clients that don't support the new revision yet can still connect.
+- **Shared code with the commands:** each API use case is now defined once in `GraderCli/UseCases` (description with error codes, ids, input document, effect, request). Every definition becomes both a CLI command and an MCP tool, and both use the same `ApiCaller` for the HTTP call. The old per-area `*Commands.cs` files are now `*UseCases.cs`. A new API use case is one new entry and gets both a command and a tool.
+- **13 tools**, named like `classes_get` or `demo_data_replace`. Ids are integer parameters (`classId`).
+- **Documents:** tools that save take the document inline as `document` or as a path to a local JSON file as `file`. One thing I added beyond what you asked: the `document` schema is the API's real request schema, taken from the OpenAPI spec (now embedded in the CLI) with its references inlined. That way the model sees the exact shape, including required nulls such as `"id": null` for a new student.
+- **Annotations:** read tools are marked read-only. `save`, `delete` and `demo-data replace` are marked destructive, because `save` removes students or results missing from the list. `create` is marked not destructive. On MCP, these annotations replace the CLI's `--yes`.
+- **Errors:** API errors come back as tool errors with the same JSON as the CLI's `--json` errors (`code`, `message`, `status`). Invalid arguments and an unreachable API are handled the same way.
+
+**Tests (3 new)**
+- A `classes_get` call through an MCP client, pinned to 2026-07-28, against the in-memory Web API and a real database.
+- A `class-not-found` from the API coming back as a tool error with its code.
+- A check of the read-only and destructive annotations.
+
+One catch while writing them: the SDK's in-memory client doesn't close the server's input when it's disposed, which made the run hang. The test helper `McpServerRunner` now closes it itself; this is noted in `testing.md`.
+
+**Docs**
+- `AGENTS.md`: `https://modelcontextprotocol.io/llms.txt` added as the MCP docs source.
+- `tech-docs/cli.md`: how the server works, and how to register it, e.g. `claude mcp add grader -- grader mcp` or an `mcpServers` JSON entry.
+- `tech-docs/testing.md`: how the MCP tests work, plus the hang described above.
+- The `grader-cli` skill now mentions the MCP tools.
+
+The Gmail, Google Calendar and Google Drive connectors need authorization in your claude.ai connector settings, and Leo Wiki failed to connect this session. None of them were needed for this task.
+--- after step9a: branch=main head=ac59634 Add MCP server to the CLI: grader mcp
+OK step9a

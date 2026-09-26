@@ -1,18 +1,19 @@
 # Command-Line Interface (CLI)
 
-`GraderCli` is the `grader` command, a CLI for the Grader Web API. Its main users are AI agents doing tasks for a teacher; humans use it too.
+`GraderCli` is the `grader` command, a CLI for the Grader Web API. Its main users are AI agents doing tasks for a teacher; humans use it too. `grader mcp` runs the same use cases as MCP server (see [MCP server](#mcp-server)).
 
 ## Approach
 
 - **One command per use case of the Web API**, named `grader <area> <verb>`. The area is the API's resource (plural kebab-case, e.g. `classes`, `school-years`). The verbs mirror the operations: `list` (`GetClasses`), `get` (`GetClass`), `create` (`CreateClass`), `save` (`SaveClass`), `delete` (`DeleteClass`); the demo data use case is `demo-data replace`. Example: `grader classes get 7`.
 - **Mirror the API, add nothing.** Ids are arguments, `create`/`save` take the complete document as JSON from `--file` or stdin, in the same shape as the API request. There are no convenience commands (e.g. "add a student"): agents compose `get --json` → edit → `save`. This works because the `GET` responses are supersets of the save requests (the API ignores unknown properties). The CLI checks that the input is a JSON object, but leaves validation and business rules to the API.
 - **HTTP only, no `GraderLogic` reference.** The CLI calls the API through a generated Kiota client, so it works against every Grader deployment and tests the API as a real client does.
-- **Code structure mirrors the API:** one `<Area>/<Area>Commands.cs` per API tag (like `GraderApi/<Area>/<Area>Endpoints.cs`). Shared pieces live in `GraderCli/Commands`: `GraderRootCommand` holds the global options and the root help, `GraderCommand` adds examples and `SetApiAction`, and `CommandInvocation` handles a single run (client, input, output, errors). `CliContext` bundles the process environment (streams, environment variables, HTTP), which tests replace.
+- **Each use case is defined once** (`GraderCli/UseCases/UseCase.cs`) and becomes both a CLI command and an MCP tool: verb, description incl. error codes, ids, input document, effect (read, create, replace, delete), the Kiota request and the text output. A new use case of the API is one new `UseCase`; nothing else to wire up. Descriptions are shown by both, so they must not mention CLI syntax.
+- **Code structure mirrors the API:** one `<Area>/<Area>UseCases.cs` per API tag (like `GraderApi/<Area>/<Area>Endpoints.cs`), listed in `UseCaseCatalog`. `UseCases/ApiCaller` sends the request of a use case, shared by commands and tools. `GraderCli/Commands` turns use cases into commands (`UseCaseCommands`); `GraderRootCommand` holds the global options and the root help, `GraderCommand` adds examples and `SetApiAction`, and `CommandInvocation` handles a single run (input, output, errors). `GraderCli/Mcp` holds the MCP server. `CliContext` bundles the process environment (streams, environment variables, HTTP, the MCP transport), which tests replace.
 
 ## Calling the API with Kiota
 
 - Commands build requests with the generated request builders (e.g. `call.Client.Api.Classes[id].ToGetRequestInformation()`) and send them with the request adapter. Generated models are only used to render the text output.
-- **Kiota's serializer is not used for request or response JSON.** It never writes `null`, but the API requires explicit nulls (e.g. `"id": null` for a new student, see [web-api.md](web-api.md#validation)) and returns them (e.g. a missing result). The CLI therefore sends request documents exactly as read, and `--json` prints the response exactly as received (only indented). For this reason `create`/`save` pass a placeholder model to `To<Method>RequestInformation(new())` and then replace the body (`CommandInvocation.SetDocumentAsync`), and the generated `GetAsync`/`PutAsync`/... methods are not used.
+- **Kiota's serializer is not used for request or response JSON.** It never writes `null`, but the API requires explicit nulls (e.g. `"id": null` for a new student, see [web-api.md](web-api.md#validation)) and returns them (e.g. a missing result). The CLI therefore sends request documents exactly as read, and `--json` and the MCP tools return the response exactly as received (`--json` indents it). For this reason `create`/`save` pass a placeholder model to `To<Method>RequestInformation(new())` and `ApiCaller` replaces the body, and the generated `GetAsync`/`PutAsync`/... methods are not used.
 - **One error mapping for all status codes** (`XXX` → `HttpValidationProblemDetails`, a superset of problem details). The generated methods only map the statuses an endpoint declares, so a `500` would lose its `code`. The API's error `code` comes from `AdditionalData["code"]`.
 
 ## Generating the client
@@ -36,6 +37,34 @@ scripts/generate-cli-client.sh --check   # fails if the committed client is out 
 - **Help with examples:** every command's description contains the API's error codes, and `--help` shows its examples. The root help also describes output, input, exit codes and the environment.
 - **API URL:** `--api-url` overrides the environment variable `GRADER_API_URL`, which overrides the default `http://localhost:5100` (the development API). The help shows the effective default.
 
+## MCP server
+
+`grader mcp` runs Grader as MCP server over stdio (JSON-RPC on stdin/stdout) for AI agents whose host prefers tools over a shell. The concepts and the protocol are documented at https://modelcontextprotocol.io/llms.txt; we support spec revision 2026-07-28. It uses the official C# SDK (`ModelContextProtocol.Core`, no hosting or DI package needed); `GraderCli/Mcp/McpServerCommand.cs` configures it.
+
+- **One tool per command, from the same `UseCase`:** named `<area>_<verb>` (`classes_get`, `demo_data_replace`), same description, ids as integer parameters in camelCase (`classId`), same API call (`ApiCaller`). Tools are listed in the catalog's order (deterministic, for clients caching the list), which is why the server uses list/call handlers instead of the SDK's tool collection (a dictionary).
+- **Documents inline or as file:** tools that save take the document inline (`document`, a JSON object) or as path of a local JSON file (`file`), exactly one of them. The schema of `document` is the API's request schema from the OpenAPI spec (embedded into the CLI, see `DocumentSchemas`) with all `$ref`s inlined, so the model sees the exact shape incl. required nulls. Inline documents are sent as raw JSON text, never re-serialized (nulls).
+- **Annotations instead of `--yes`:** read tools are `readOnlyHint`; `save`, `delete` and `demo-data replace` are `destructiveHint` (save replaces lists and removes entries), `create` is not; `save` is `idempotentHint`; all are `openWorldHint: false`. Asking the user before destructive calls is the MCP host's job.
+- **Errors are tool errors** (`isError: true`) whose text is the same JSON as the CLI's `--json` errors (`code`, `message`, `status`, `errors`), so the model can correct its call. This includes API errors, invalid arguments (`invalid-input`, e.g. unknown parameters or a missing id) and an unreachable API. Only unknown tool names are protocol errors.
+- **Protocol revision:** the SDK negotiates 2026-07-28 via `server/discover` and per-request `_meta`; the server is not pinned, so clients on older revisions still work through the SDK's `initialize` support. We write no code for older revisions, and the tests use a client pinned to 2026-07-28.
+- **API URL:** `--api-url` or `GRADER_API_URL` of the server process, as for commands. The server has no state between tool calls (stateless like the protocol) and creates an HTTP client per call.
+
+### Registering the server in an MCP client
+
+The client launches `grader mcp` as a subprocess. Install the global tool first (see below); set `GRADER_API_URL` if the API does not run on the default URL.
+
+```bash
+claude mcp add grader -- grader mcp                                           # Claude Code (current project)
+claude mcp add grader -e GRADER_API_URL=http://localhost:5200 -- grader mcp   # another API
+```
+
+Clients configured with JSON (e.g. `.mcp.json` of Claude Code, Claude Desktop) use:
+
+```json
+{ "mcpServers": { "grader": { "command": "grader", "args": ["mcp"], "env": { "GRADER_API_URL": "http://localhost:5100" } } } }
+```
+
+During development without installing: build once and use `"command": "dotnet", "args": ["run", "--no-build", "--project", "<repo>/GraderCli", "--", "mcp"]`. Without `--no-build`, every start builds (slow startup, and build output would go to stdout). Test interactively with the MCP Inspector (`npx @modelcontextprotocol/inspector grader mcp`).
+
 ## Skill for teacher tasks
 
 The project skill `grader-cli` (`.agents/skills/grader-cli`, linked into `.claude/skills`) teaches agents to do a teacher's everyday tasks with the CLI: workflows (finding ids by name, get → edit → save of complete documents) and domain pitfalls (missing result ≠ 0, destructive commands). It deliberately does not repeat `--help`. Update it when a change affects these workflows, e.g. a new use case, command or business rule.
@@ -57,7 +86,7 @@ Alternatively, increase `<Version>` in `GraderCli/GraderCli.csproj`, pack, and r
 
 ## Testing
 
-CLI tests in `GraderTests/Cli` run the complete CLI in memory (`CliRunner`) against the API in memory (`GraderApiFactory`). See [testing.md](testing.md).
+CLI tests in `GraderTests/Cli` run the complete CLI in memory (`CliRunner`) against the API in memory (`GraderApiFactory`); MCP server tests connect an MCP client to `grader mcp` in memory (`McpServerRunner`). See [testing.md](testing.md).
 
 ## Gotchas
 
@@ -65,6 +94,8 @@ CLI tests in `GraderTests/Cli` run the complete CLI in memory (`CliRunner`) agai
 - **`new Option<T>("--name", "text")`: the second argument is an alias, not the description.** Set `Description` as a property.
 - **System.CommandLine returns 1 for parse errors**, which the CLI reserves for unexpected errors. `CliApp` maps parse errors to 2, but only if the parse error action runs: `classes get --help` has a parse error (missing id) but shows help with exit code 0.
 - **Write output only through `CliContext`** (or `ParseResult.InvocationConfiguration`), never through `Console`: otherwise tests cannot capture it.
+- **`grader mcp` must never write to stdout** except through its transport: stdout carries the JSON-RPC messages, and anything else breaks the client. Diagnostics go to stderr. Do not add the SDK's hosting package with console logging (it logs to stdout by default).
+- **The stdio server stops when stdin closes** and drops requests still in flight. A client closes stdin only to shut down, so this is correct, but a script piping requests into `grader mcp` must keep stdin open until it has all responses.
 - **No top-level statements in `GraderCli`:** their global `Program` class would clash with the API's `Program` in `GraderTests` (`WebApplicationFactory<Program>`).
 - **Set the adapter's `BaseUrl` before creating the `GraderApiClient`:** the constructor copies it into the request builders.
 - **CLI types are `internal`** (CA1010 flags public subclasses of `Command`). Only `CliApp`, `CliContext` and `ExitCodes` are public, for the tests.

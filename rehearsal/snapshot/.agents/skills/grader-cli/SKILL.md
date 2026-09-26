@@ -1,6 +1,6 @@
 ---
 name: grader-cli
-description: Do a teacher's everyday work in the Grader app with the `grader` CLI - set up a class from a list of names, add, rename or remove students, record or correct exam results (incl. converting points to percentages), and answer questions about results, averages, missing results or how a student or class is doing. Use this skill whenever a teacher asks about or wants to change classes, students, exams, tests, results, points, percentages or grades in Grader, even if they don't mention the CLI. Not for developing GraderCli or the API itself.
+description: Do a teacher's everyday work in the Grader app with the `grader` CLI (or its MCP tools) - set up a class from a list of names, add, rename or remove students, record or correct exam results (incl. converting points to percentages), and answer questions about results, averages, missing results or how a student or class is doing. Use this skill whenever a teacher asks about or wants to change classes, students, exams, tests, results, points, percentages or grades in Grader, even if they don't mention the CLI. Not for developing GraderCli or the API itself.
 ---
 
 # Teacher tasks with the `grader` CLI
@@ -11,6 +11,11 @@ are compositions of a few commands. This skill covers how to compose them safely
 
 ## Before you start
 
+- **CLI or MCP tools:** `grader mcp` runs the same use cases as MCP server. If its tools are available to you
+  (`classes_get`, `exams_save`, ... = `grader <area> <verb>`), you may use them instead of the CLI: same
+  descriptions, ids as parameters (`classId`), documents inline as `document` (or a JSON file path as `file`), the
+  API's JSON as result and errors as tool errors with the same error codes. Destructive tools need no `--yes`; the
+  rules under "Destructive commands" apply all the same. Everything else in this skill applies to both.
 - **Invocation:** check with `command -v grader` whether the global tool is installed. Otherwise, in the repository
   root, build once (`dotnet build GraderCli`) and then use `dotnet run --no-build --project GraderCli -- <args>`:
   plain `dotnet run` checks the build on every call, which adds up in loops. Shell functions and variables do not

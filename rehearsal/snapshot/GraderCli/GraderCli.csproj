@@ -18,7 +18,13 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Kiota.Bundle" Version="2.1.2" />
+    <PackageReference Include="ModelContextProtocol.Core" Version="2.2.0" />
     <PackageReference Include="System.CommandLine" Version="3.0.0-rc.1.26425.128" />
+  </ItemGroup>
+
+  <!-- The spec the API client is generated from; the MCP tools take the input schemas of their documents from it. -->
+  <ItemGroup>
+    <EmbeddedResource Include="../GraderApi/openapi/GraderApi.json" LogicalName="GraderApi.json" />
   </ItemGroup>
 
 </Project>

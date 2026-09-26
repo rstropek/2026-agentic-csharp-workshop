@@ -1,7 +1,10 @@
+using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
+
 namespace GraderCli;
 
 /// <summary>
-/// The process environment of a CLI run: standard streams, environment variables and HTTP.
+/// The process environment of a CLI run: standard streams, environment variables, HTTP and the MCP server's transport.
 /// <see cref="FromConsole"/> is the real one; tests provide their own to run commands in memory.
 /// </summary>
 public sealed class CliContext
@@ -24,6 +27,11 @@ public sealed class CliContext
     /// </summary>
     public required Func<HttpClient> CreateHttpClient { get; init; }
 
+    /// <summary>
+    /// Creates the transport of the MCP server (<c>grader mcp</c>): stdio, i.e. JSON-RPC messages on stdin and stdout.
+    /// </summary>
+    public required Func<ITransport> CreateMcpServerTransport { get; init; }
+
     public static CliContext FromConsole() => new()
     {
         Output = Console.Out,
@@ -32,5 +40,6 @@ public sealed class CliContext
         IsInputRedirected = Console.IsInputRedirected,
         GetEnvironmentVariable = Environment.GetEnvironmentVariable,
         CreateHttpClient = () => new HttpClient(),
+        CreateMcpServerTransport = () => new StdioServerTransport("grader"),
     };
 }

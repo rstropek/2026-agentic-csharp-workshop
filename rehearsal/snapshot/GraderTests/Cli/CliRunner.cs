@@ -26,6 +26,7 @@ public static class CliRunner
             IsInputRedirected = input is not null,
             GetEnvironmentVariable = _ => null,
             CreateHttpClient = createHttpClient,
+            CreateMcpServerTransport = () => throw new InvalidOperationException($"Run the MCP server with {nameof(McpServerRunner)}."),
         };
 
         // The in-memory test server accepts any host; the URL makes the tests independent of the default.

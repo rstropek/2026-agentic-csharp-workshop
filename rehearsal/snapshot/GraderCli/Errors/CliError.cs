@@ -8,7 +8,7 @@ using Microsoft.Kiota.Abstractions.Serialization;
 namespace GraderCli.Errors;
 
 /// <summary>
-/// An error as reported on stderr: as text, or as JSON with <c>--json</c>.
+/// An error as reported on stderr: as text, or as JSON with <c>--json</c>. MCP tool errors contain the JSON.
 /// </summary>
 /// <param name="Code">The API's error code (the <c>code</c> of the problem details) or an error code of the CLI.</param>
 /// <param name="Message">Human-readable message; for API errors the problem details' <c>detail</c>.</param>
@@ -51,7 +51,7 @@ internal sealed record CliError(
     {
         if (asJson)
         {
-            error.WriteLine(JsonSerializer.Serialize(this, jsonOptions));
+            error.WriteLine(ToJson());
             return;
         }
 
@@ -64,6 +64,8 @@ internal sealed record CliError(
             }
         }
     }
+
+    public string ToJson() => JsonSerializer.Serialize(this, jsonOptions);
 
     private static CliError FromProblemDetails(HttpValidationProblemDetails problem)
     {
