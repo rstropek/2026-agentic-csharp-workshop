@@ -5,9 +5,14 @@
 Grader is a grading app for teachers and students. The repository contains the following projects:
 
 - `GraderApi`: ASP.NET Core web API (OpenAPI with Scalar UI) that serves the backend.
-- `GraderLogic`: class library with the core grading domain logic, used by the API.
+- `GraderLogic`: class library with the core grading domain logic and the database (EF Core, SQLite), used by the API.
 - `GraderTests`: xUnit v3 tests (Microsoft Testing Platform, NSubstitute, `Microsoft.AspNetCore.Mvc.Testing`) for the logic and API.
 - `GraderWeb`: Angular frontend (see `GraderWeb/AGENTS.md` for Angular-specific guidelines).
+
+Other folders:
+
+- `data`: SQLite database files (content not in git).
+- `spec`: specifications. They are historical and not always kept up to date, so they might not reflect the current state of the system if they were written a while ago. If a spec contradicts code or tech docs, code and tech docs win; ask if unsure.
 
 Hosting: in development, the Angular dev server serves the frontend and proxies `/api` to the backend. In all other environments, the backend serves the built Angular app (from `GraderApi/wwwroot`) and the API from the same origin.
 
@@ -61,6 +66,7 @@ Use the installed skills to research up-to-date documentation. Priority:
 - [testing.md](tech-docs/testing.md): testing strategy per layer (.NET unit/integration, Angular component, Playwright E2E), test commands, and testing gotchas.
 - [code-quality.md](tech-docs/code-quality.md): QA baseline (C# analyzers and code style, Biome, Angular compiler checks), where each is configured, and the reasons for deviations from defaults.
 - [api-client.md](tech-docs/api-client.md): how the OpenAPI spec is generated at build time and turned into the Angular API client, how to design endpoints for a good client, and generation commands.
+- [database.md](tech-docs/database.md): SQLite/EF Core data model, where constraints are defined, migrations (commands, design-time factory), test data generator, and database gotchas.
 
 Maintain the tech docs as part of every change:
 

@@ -8,6 +8,7 @@ Every feature gets tests for the regular case **and** at least one error case, o
 | --- | --- | --- | --- |
 | Logic unit tests | `GraderTests/Logic` | xUnit v3 | Everything real; logic classes have no dependencies worth mocking. |
 | API unit tests | `GraderTests/Api` | xUnit v3, `WebApplicationFactory<Program>`, NSubstitute | Real HTTP pipeline (routing, binding, exception handler, JSON); logic interfaces replaced by substitutes. |
+| Database integration tests | `GraderTests/Data` | xUnit v3, in-memory SQLite | Real database with all migrations applied, private per test (see [database.md](database.md)). |
 | API integration tests | `GraderTests/Integration` | xUnit v3, `WebApplicationFactory<Program>` | Everything real. Also smoke tests that OpenAPI JSON and Scalar respond. |
 | Angular component tests | `GraderWeb/src/**/*.spec.ts` | Vitest via `ng test` (jsdom) | Component real; generated API services mocked. |
 | E2E tests | `GraderWeb/e2e` | Playwright (Chromium) | Everything real, production hosting setup. |

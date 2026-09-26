@@ -17,6 +17,7 @@ Fast, deterministic checks that fail on every finding: no warnings that "can be 
 - **One place per stack.** All projects inherit `Directory.Build.props`; C# style lives only in the root `.editorconfig`. `GraderWeb` has its own `.editorconfig` (`root = true`) that Biome reads (`useEditorconfig`).
 - **Only `warning` is enforced.** Rules we want enforced are set to `warning` (which becomes an error). Preferences that would cause churn (primary constructors, expression bodies, collection expressions, ...) stay at `suggestion`: they show in the IDE but never fail the build. To enforce a new rule, set its severity to `warning` in `.editorconfig` and fix the existing code in the same change.
 - **Per-rule severities, no bulk severities.** `dotnet_analyzer_diagnostic.category-Style.severity` is ignored when `AnalysisLevel` includes a mode (`-recommended`), so each IDE rule gets its own severity (`option = value:warning` or `dotnet_diagnostic.IDExxxx.severity`).
+- **EF Core migrations are generated code** (`generated_code = true` in `.editorconfig`), so analyzers and `dotnet format` skip them. See [database.md](database.md#gotchas).
 - **Test naming:** tests use `Method_Scenario_Expectation`, so CA1707 (no underscores) is disabled for `GraderTests` only.
 - **Biome rules turned off**, both because they clash with Angular/TypeScript settings:
   - `useLiteralKeys`: it conflicts with `noPropertyAccessFromIndexSignature` in `tsconfig.json`, which requires `process.env['CI']`.

@@ -496,3 +496,7 @@ $RECYCLE.BIN/
 
 # QA script logs (scripts/qa.sh)
 .qa-logs/
+
+# SQLite database files (the folder is kept in git, see tech-docs/database.md)
+/data/*
+!/data/.gitkeep
