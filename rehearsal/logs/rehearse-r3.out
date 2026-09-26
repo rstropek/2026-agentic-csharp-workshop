@@ -377,3 +377,31 @@ Class 1D and its first Mathematics test are now in Grader.
 
 Hannah is recorded as having no result, not 0 %, so her absence doesn't lower the class average. If she takes a make-up test, you can add her result to this same test later.
 --- after 9b (expected: no changes)
+committed step 9b
+=== step 9c (18:35:32)
+Duration: 87s
+success turns: 57 cost: 0.8011816
+The three lowest Mathematics averages in 2025/26 belong to Amber Smitham, Lance Mills and Dejuan Abernathy. All three have only 2 of the 4 exam results, so their averages are less reliable than the others.
+
+Each class had four Mathematics exams: 2025-10-08, 2025-12-23, 2026-03-09 and 2026-05-25. Averages leave out missing results rather than counting them as 0 %.
+
+| # | Student | Class | Average | Results |
+|---|---|---|---|---|
+| 1 | Amber Smitham | 2B | **46.3 %** | 2 of 4 (none on 10-08 and 03-09) |
+| 2 | Lance Mills | 3A | **56.3 %** | 2 of 4 (none on 12-23 and 03-09) |
+| 3 | Dejuan Abernathy | 3B | **60.5 %** | 2 of 4 (none on 10-08 and 03-09) |
+
+The students who come next:
+
+| Student | Class | Average | Results |
+|---|---|---|---|
+| Abraham Lindgren | 2B | 62.5 % | 4 of 4 |
+| Douglas Purdy | 3A | 62.8 % | 3 of 4 (none on 12-23) |
+| Jerod Waelchi | 4A | 63.3 % | 3 of 4 (none on 12-23) |
+| Orville Heidenreich | 4B | 64.3 % | 4 of 4 |
+| Danika Mitchell | 1C | 64.7 % | 4 of 4 |
+
+If you only count students with all four results, the three lowest are **Abraham Lindgren (2B, 62.5 %)**, **Orville Heidenreich (4B, 64.3 %)** and **Danika Mitchell (1C, 64.7 %)**.
+
+I worked out these averages by hand from the 40 Mathematics exams across the 10 classes, since the app has no statistics feature. I didn't change any data.
+--- after 9c (expected: no changes)
