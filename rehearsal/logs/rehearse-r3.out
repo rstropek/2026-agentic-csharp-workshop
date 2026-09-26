@@ -353,3 +353,27 @@ One catch while writing them: the SDK's in-memory client doesn't close the serve
 The Gmail, Google Calendar and Google Drive connectors need authorization in your claude.ai connector settings, and Leo Wiki failed to connect this session. None of them were needed for this task.
 --- after step9a: branch=main head=ac59634 Add MCP server to the CLI: grader mcp
 OK step9a
+committed step 9a
+=== step 9b (18:35:04)
+demo data reset (/api/demo-data)
+MCP config: /Users/rstropek/github/basta2026/rehearsal/logs/mcp-r3.json (/Users/rstropek/github/basta2026/rehearsal/grader/GraderCli/bin/Debug/net11.0/GraderCli.dll)
+Duration: 24s
+success turns: 9 cost: 0.2680824
+Class 1D and its first Mathematics test are now in Grader.
+
+- **Class 1D (school year 2026/27):** created with all 8 students. The first word of each name is the first name and the second is the last name.
+- **Mathematics test on 22 September 2026:** 7 results entered.
+
+| Student | Result |
+|---|---|
+| Elias Bauer | 45 % |
+| Jonas Gruber | 91.5 % |
+| Hannah Hofer | no result (sick) |
+| Lena Huber | 78 % |
+| Paul Leitner | 55 % |
+| Felix Moser | 72 % |
+| Mia Steiner | 88 % |
+| Sophie Wagner | 64 % |
+
+Hannah is recorded as having no result, not 0 %, so her absence doesn't lower the class average. If she takes a make-up test, you can add her result to this same test later.
+--- after 9b (expected: no changes)
