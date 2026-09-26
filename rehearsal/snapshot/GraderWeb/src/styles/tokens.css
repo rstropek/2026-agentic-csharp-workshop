@@ -1,0 +1,80 @@
+/*
+ * Design tokens. Dark mode changes only the color tokens; the theme is switched with the data-theme
+ * attribute on <html> (see ThemeService).
+ */
+:root {
+  color-scheme: light;
+
+  /* Colors (designer handoff: spec/design/readme.md) */
+  --color-bg: #f3f2f2;
+  --color-surface: #eae9e9;
+  --color-text: #201e1d;
+  --color-muted: #605d5d;
+  --color-placeholder: #7d7979;
+  --color-divider: color-mix(in srgb, #201e1d 40%, transparent);
+  --color-skeleton: #d7d3d3;
+  --color-accent: #ec3013;
+  --color-accent-hover: #dd2b0f;
+  --color-accent-pressed: #ae1800;
+  --color-error-text: #ae1800;
+  --color-accent-tint: #fff2ef;
+  --color-accent-dark: #7c1405;
+  --color-backdrop: color-mix(in srgb, #201e1d 40%, transparent);
+
+  /* Tints derived from the colors above, so they follow the theme automatically */
+  --color-hover: color-mix(in srgb, var(--color-text) 7%, transparent);
+  --color-pressed: color-mix(in srgb, var(--color-text) 14%, transparent);
+  --color-cell-hover: color-mix(in srgb, var(--color-text) 5%, transparent);
+  --color-input-border-hover: color-mix(in srgb, var(--color-text) 45%, transparent);
+  --color-ghost-hover: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  --color-selection: color-mix(in srgb, var(--color-accent) 30%, transparent);
+
+  /* Typography */
+  --font-family: "Archivo", system-ui, sans-serif;
+  --font-size-page-title: 42px;
+  --font-size-detail-title: 32px;
+  --font-size-section: 20px;
+  --font-size-brand: 18px;
+  --font-size-body: 15px;
+  --font-size-control: 14px;
+  --font-size-small: 13px;
+  --font-size-label: 12px;
+  --font-size-column-header: 11px;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-heavy: 800;
+  --letter-spacing-title: -0.015em;
+  --letter-spacing-caps: 0.08em;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Rules and sizes */
+  --rule-strong: 2px solid var(--color-divider);
+  --rule: 1px solid var(--color-divider);
+  --header-height: 56px;
+  --control-height: 36px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark; /* native controls (select, date picker) follow */
+  --color-bg: #201e1d;
+  --color-surface: #2d2b2b;
+  --color-text: #f3f2f2;
+  --color-muted: #bab6b6;
+  --color-placeholder: #9b9797;
+  --color-divider: color-mix(in srgb, #f3f2f2 32%, transparent);
+  --color-skeleton: #444141;
+  --color-accent: #ff563c;
+  --color-accent-hover: #ff9783;
+  --color-accent-pressed: #ffc4b8;
+  --color-error-text: #ff9783;
+  --color-accent-tint: #4d170e;
+  --color-accent-dark: #ffc4b8;
+  --color-backdrop: color-mix(in srgb, #000 60%, transparent);
+}

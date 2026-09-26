@@ -1,1 +1,15 @@
-/* You can add global styles to this file, and also import other style files */
+/*
+ * Global styles: design tokens and the reusable CSS building blocks of the design system
+ * (see ../../tech-docs/ui.md). Components use these classes and variables; they never hard-code colors.
+ */
+
+/* Fonts are bundled from npm; nothing is loaded from the internet at runtime. */
+@import "@fontsource/archivo/400.css";
+@import "@fontsource/archivo/600.css";
+@import "@fontsource/archivo/800.css";
+
+@import "./styles/tokens.css";
+@import "./styles/base.css";
+@import "./styles/typography.css";
+@import "./styles/controls.css";
+@import "./styles/layout.css";

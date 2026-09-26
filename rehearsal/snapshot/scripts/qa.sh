@@ -12,7 +12,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="$ROOT/.qa-logs"
-E2E_PORT=5200
+E2E_PORT=5210 # see GraderWeb/playwright.config.ts
 
 SKIP_E2E=false
 for arg in "$@"; do
@@ -82,8 +82,8 @@ skip_section() {
   SUMMARY+=("$(printf '%-5s %-28s %s' SKIP "$1" "($2)")")
 }
 
-# Runs `npm run e2e`, but fails if a server already listens on the E2E port: outside of CI, Playwright
-# would reuse it and test an outdated build.
+# Runs `npm run e2e`, but fails with the blocking process if a server already listens on the E2E port:
+# Playwright never reuses a server (it might use another database) and could not start its own.
 npm_run_e2e_on_free_port() {
   if command -v lsof >/dev/null && lsof -iTCP:"$E2E_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
     echo "Port $E2E_PORT is in use (stale E2E server?). Stop it, then rerun:"

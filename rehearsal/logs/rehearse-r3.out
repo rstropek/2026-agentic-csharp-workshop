@@ -148,3 +148,41 @@ All use cases from your list are implemented. The full QA script passed (8/8 sec
 3. **Names are sorted case-sensitively, with umlauts after "z".** That's SQLite's default text ordering. It may 
 --- after step6: branch=main head=2077369 Add first Web API use cases: class management, exams, demo data
 OK step6
+committed step 6
+=== step 7a (17:03:59)
+Duration: 1321s
+success turns: 118 cost: 9.362503799999994
+The web UI works, the QA script passes all 8 sections, and everything is committed to main as `a709eac`.
+
+**What's built**
+- **Calculator removed completely:** UI, endpoint, logic and tests. The OpenAPI spec and the `.http` file were updated to match.
+- **Design system:**
+  - Colors, type and spacing are CSS variables in `src/styles/tokens.css`. Dark mode only swaps the colors, and components never hard-code a color.
+  - Native buttons, inputs and selects are styled with shared global CSS classes.
+  - The Archivo font and the single × icon are bundled from npm, so nothing loads from the internet at runtime.
+- **Base components:** `ConfirmDialog` (native `<dialog>`, Cancel has focus, Escape cancels), `LoadError` (message plus "Try again"), `FieldError`, `Skeleton` and `SchoolYearPicker`.
+- **Base services:** `SchoolYearStore` (newest year selected by default), `ThemeService` (light by default, remembered in the browser), `ConfirmService`, and `toApiError`, which turns Problem Details, network errors and server errors into user messages.
+- **Classes:**
+  - A 5-column class grid.
+  - The class editor matching mockup 02: new rows on top with auto-focus, validation with the "n fields need attention" count, focus on the first invalid field, and server errors shown in place of the count.
+  - Save sends the full student list, and while saving the fields are read-only and the button reads "Saving…".
+  - Deleting a class asks for confirmation first.
+- **Exams** is a placeholder. **Settings** has the light/dark toggle and the demo data reset (with confirmation).
+
+**Tests**
+- **Component tests (16, API mocked):**
+  - The confirmation dialog: confirm, cancel and Escape.
+  - The class editor: full student list sent, removed students left out, validation with focus, server error shown.
+  - `toApiError` and the app shell.
+- **Playwright E2E:**
+  - One test creates a class, adds, edits and removes students, saves, and checks the result after a reload.
+  - One test checks that invalid rows are not saved.
+  - Before the tests, a setup step fills a fresh temporary database with demo data through the Settings page.
+
+**Browser check:** The Chrome window is maximized on a 2056 px screen and wouldn't resize, so I took the exact 1920×1080 comparison screenshots with Playwright's Chromium. I used Chrome for the interactive checks (theme toggle, adding a student, saving). The class list, editor and dark mode match the mockups closely; the only fix needed was a wider school year select. The dev database is reset to clean demo data.
+
+**Changes you might not expect**
+- **E2E port is now 5210:** the E2E server never reuses a running server. Before, a server already running on 5200 (the port for the production-like run) could have been reused, and the tests' demo data reset would have wiped `data/grader.db`. The QA script and testing.md are updated.
+- **Router links carry an extra `href`:** Biome's `useValidAnchor` rule doesn't recognize `routerLink`, so each router link also h
+--- after step7a: branch=main head=a709eac Add web UI foundation and class management, remove calculator
+OK step7a

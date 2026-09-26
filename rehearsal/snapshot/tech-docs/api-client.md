@@ -26,16 +26,18 @@ cd GraderWeb && npm run generate:api
 ## Usage in Angular
 
 - The client is registered once in `GraderWeb/src/app/app.config.ts` (`provideHttpClient(withInterceptorsFromDi())` + `provideDefaultClient({ basePath: '' })`).
-- Inject the generated service and call its methods; convert to promises with `firstValueFrom` where `async` code is more convenient (e.g. Signal Forms submission). Reference: `GraderWeb/src/app/calculator/calculator.ts`.
-- Errors arrive as `HttpErrorResponse`; for expected errors its `error` is a `ProblemDetails` object (generated model) with a `code` extension member. Decide on `code`; show `detail` (fallback `title`) to the user.
+- **All API access goes through the generated services** (e.g. `ClassManagementService`, `DemoDataService`); components never build URLs or use `HttpClient` directly. Component tests replace the service with a mock object (see [testing.md](testing.md)).
+- **Loading data: `rxResource`** with the generated method as `stream` (the methods return Observables). Parameters come from signals (e.g. the selected school year); when they change, the pending request is cancelled (unsubscribed) and a new one starts. Reference: `GraderWeb/src/app/classes/class-list.ts`.
+- **Writing data:** `firstValueFrom(service.method(...))` in `async` code (Signal Forms submission action, button handlers). Reference: `GraderWeb/src/app/classes/class-editor.ts`.
+- **Errors → user messages:** `toApiError` (`GraderWeb/src/app/shared/api-error.ts`) turns any error into `{ code, status, message }`: the problem details' `detail` (the API's messages are written for users), field errors of `validation-failed`, and fixed texts for network errors (status 0), 5xx and 404 without details. Decide on `code`, show `message`. `LoadError` shows load failures with a retry button.
 
 ## Designing endpoints for a good client
 
-The generated TypeScript is only as good as the OpenAPI metadata. Reference: `GraderApi/Calculator/CalculatorEndpoints.cs`.
+The generated TypeScript is only as good as the OpenAPI metadata. Reference: `GraderApi/ClassManagement/ClassManagementEndpoints.cs`.
 
 | OpenAPI metadata | Source in .NET | Effect on the client |
 | --- | --- | --- |
-| Tag | `WithTags("Calculator")` on the route group | One service per tag: `CalculatorService` |
+| Tag | `WithTags("ClassManagement")` on the route group | One service per tag: `ClassManagementService` |
 | `operationId` | `WithName("Add")` | Method name: `add(...)`. Keep names unique and meaningful. |
 | Success response | `TypedResults` return types (`Ok<T>`, ...) | Typed return value (`Observable<T>`) |
 | Error responses | `.ProducesProblem(statusCode)` | Documented problem details response |
@@ -51,4 +53,7 @@ Expected domain errors are exceptions derived from `GraderLogic.GraderLogicExcep
 - **Build-time generation runs `Program.cs`** in the Development environment (`OpenApiGenerationEnvironment` in the csproj). Startup code that needs external resources (databases, secrets) must be skipped during generation, e.g. by checking `Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider"`.
 - **OpenAPI version:** .NET 11 emits OpenAPI 3.2 by default. ng-openapi handles the current spec; if a future spec breaks the generator, set `options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1` in `AddOpenApi`.
 - **Missing parameters:** generated methods skip `null`/`undefined` query parameters. The API then rejects the request with a `400` problem details without `detail` (binding failure, code `invalid-request`). Validate required inputs in the UI before calling the API.
+- **Resource errors:** `resource.error()` of a failed API call is the `HttpErrorResponse` itself (it counts as error-like because it has `name` and `message`). Values that are not error-like are wrapped in an `Error` with the original as `cause`; `toApiError` handles both.
+- **`resource.value()` throws in the error state.** Read it only after `hasValue()` (see `SchoolYearStore.list`).
+- **Validation limits are not in the generated models.** The max lengths of the API (`SchoolClass.NameMaxLength`, ...) are repeated as constants in the Angular form (`class-editor.ts`); change both together.
 - Never edit files in `GraderWeb/src/app/api/`; they are overwritten. On a fresh clone the folder is missing (TypeScript errors in the IDE) until `npm run generate:api` or any `npm start/build/test` has run.

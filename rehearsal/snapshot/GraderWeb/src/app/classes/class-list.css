@@ -1,0 +1,49 @@
+.title-row {
+  margin-top: var(--space-1);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--rule-strong);
+  border-left: var(--rule-strong);
+}
+
+.grid > * {
+  display: flex;
+  border-right: var(--rule-strong);
+  border-bottom: var(--rule-strong);
+}
+
+.cell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-height: 240px;
+  padding: var(--space-6);
+}
+
+a.cell:hover {
+  background: var(--color-cell-hover);
+}
+
+a.cell:focus-visible {
+  outline-offset: -4px;
+}
+
+.count {
+  color: var(--color-muted);
+  font-size: var(--font-size-control);
+}
+
+.count-skeleton {
+  margin-top: var(--space-3);
+}
+
+.empty {
+  margin-top: var(--space-6);
+}

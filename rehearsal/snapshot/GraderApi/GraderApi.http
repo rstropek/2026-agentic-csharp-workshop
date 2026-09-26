@@ -5,17 +5,6 @@ Accept: application/json
 
 ###
 
-GET {{GraderApi_HostAddress}}/api/calculator/add?a=1&b=2
-Accept: application/json
-
-###
-
-# Error case: returns 400 with problem details
-GET {{GraderApi_HostAddress}}/api/calculator/add?a=-1&b=2
-Accept: application/json
-
-###
-
 # Replaces all data with demo data
 POST {{GraderApi_HostAddress}}/api/demo-data
 

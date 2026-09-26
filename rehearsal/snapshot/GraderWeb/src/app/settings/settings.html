@@ -1,0 +1,55 @@
+<div class="page">
+  <h1 class="page-title">Settings</h1>
+
+  <section class="section" aria-labelledby="appearance-title">
+    <h2 id="appearance-title" class="section-title">Appearance</h2>
+    <fieldset class="options">
+      <legend class="field-label">Theme</legend>
+      <label class="option">
+        <input
+          type="radio"
+          name="theme"
+          value="light"
+          [checked]="themeService.theme() === 'light'"
+          (change)="setTheme('light')"
+        />
+        Light
+      </label>
+      <label class="option">
+        <input
+          type="radio"
+          name="theme"
+          value="dark"
+          [checked]="themeService.theme() === 'dark'"
+          (change)="setTheme('dark')"
+        />
+        Dark
+      </label>
+    </fieldset>
+  </section>
+
+  <section class="section" aria-labelledby="demo-data-title">
+    <h2 id="demo-data-title" class="section-title">Demo data</h2>
+    <p class="description">
+      Replaces all data (school years, classes, students, exams and results) with generated demo
+      data.
+    </p>
+    <div class="toolbar">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        [disabled]="resetting()"
+        (click)="resetDemoData()"
+      >
+        {{ resetting() ? 'Resetting…' : 'Reset demo data' }}
+      </button>
+      @if (resetResult(); as result) {
+        @if (result.ok) {
+          <p class="small muted" role="status">{{ result.message }}</p>
+        } @else {
+          <p class="error-text" role="alert">{{ result.message }}</p>
+        }
+      }
+    </div>
+  </section>
+</div>

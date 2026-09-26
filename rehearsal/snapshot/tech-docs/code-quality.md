@@ -26,6 +26,7 @@ Fast, deterministic checks that fail on every finding: no warnings that "can be 
 
 ## Gotchas
 
+- **Biome's `useValidAnchor` does not know `routerLink`.** It requires an `href` attribute (static or interpolated) on every `<a>`. Router links therefore repeat their target: `routerLink="/classes/{{ id }}" href="/classes/{{ id }}"`. RouterLink overwrites `href` with the same value at runtime.
 - **Biome does not format HTML.** Its HTML formatter does not understand Angular control flow (`@if`/`@for` blocks): it breaks their indentation and merges blocks onto one line. HTML formatting is off and HTML linting (mainly a11y) is on. Format templates by hand to match the existing ones (2 spaces, block content indented).
 - **IDE0005 (unnecessary usings) only runs on build with `GenerateDocumentationFile`.** That setting would also report missing XML comments (CS1591), which is suppressed. XML comments are optional.
 - **Naming rules need `dotnet_diagnostic.IDE1006.severity`.** The `severity` of a `dotnet_naming_rule` only applies in the IDE.

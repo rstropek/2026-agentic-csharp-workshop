@@ -1,0 +1,62 @@
+<div class="page">
+  <p class="overline">School year {{ schoolYears.selected()?.name }}</p>
+  <div class="title-row">
+    <h1 class="page-title">Classes</h1>
+    <button
+      type="button"
+      class="btn btn-primary"
+      [disabled]="schoolYears.selectedId() === undefined"
+      (click)="newClass()"
+    >
+      New class
+    </button>
+  </div>
+
+  @if (schoolYears.years.error()) {
+    <app-load-error
+      subject="The school years"
+      [error]="schoolYears.years.error()"
+      (retry)="schoolYears.reload()"
+    />
+  } @else if (!schoolYears.years.isLoading() && schoolYears.list().length === 0) {
+    <p class="empty muted">
+      There are no school years yet. You can fill the database with demo data in the
+      <a class="link" routerLink="/settings" href="/settings">settings</a>.
+    </p>
+  } @else if (classes.error()) {
+    <app-load-error subject="The classes" [error]="classes.error()" (retry)="classes.reload()" />
+  } @else if (classes.hasValue() && !classes.isLoading()) {
+    @if (classes.value(); as classList) {
+      @if (classList.length === 0) {
+        <p class="empty muted">There are no classes in this school year yet.</p>
+      } @else {
+        <ul class="grid" aria-label="Classes">
+          @for (schoolClass of classList; track schoolClass.id) {
+            <li>
+              <a
+                class="cell"
+                routerLink="/classes/{{ schoolClass.id }}"
+                href="/classes/{{ schoolClass.id }}"
+              >
+                <span class="cell-title">{{ schoolClass.name }}</span>
+                <span class="count">
+                  {{ schoolClass.studentCount }}
+                  {{ schoolClass.studentCount === 1 ? 'student' : 'students' }}
+                </span>
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    }
+  } @else {
+    <div class="grid" role="status" aria-busy="true" aria-label="Loading classes">
+      @for (placeholder of placeholders; track placeholder) {
+        <div class="cell">
+          <app-skeleton width="56px" height="32px" />
+          <app-skeleton width="96px" height="12px" class="count-skeleton" />
+        </div>
+      }
+    </div>
+  }
+</div>

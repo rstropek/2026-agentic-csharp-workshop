@@ -5,60 +5,6 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/api/calculator/add": {
-      "get": {
-        "tags": [
-          "Calculator"
-        ],
-        "summary": "Adds two numbers",
-        "description": "Adds two non-negative integers. Negative parameters are rejected with a problem details response.",
-        "operationId": "Add",
-        "parameters": [
-          {
-            "name": "a",
-            "in": "query",
-            "description": "First summand, must not be negative.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "b",
-            "in": "query",
-            "description": "Second summand, must not be negative.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AddResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/school-years": {
       "get": {
         "tags": [
@@ -677,20 +623,6 @@
   },
   "components": {
     "schemas": {
-      "AddResult": {
-        "required": [
-          "result"
-        ],
-        "type": "object",
-        "properties": {
-          "result": {
-            "type": "integer",
-            "description": "Sum of the two parameters.",
-            "format": "int32"
-          }
-        },
-        "description": "Result of an addition."
-      },
       "ClassDetails": {
         "required": [
           "id",
@@ -1118,9 +1050,6 @@
     }
   },
   "tags": [
-    {
-      "name": "Calculator"
-    },
     {
       "name": "ClassManagement"
     },

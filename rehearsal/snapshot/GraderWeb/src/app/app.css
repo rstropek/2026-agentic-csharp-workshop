@@ -1,7 +1,53 @@
 :host {
   display: block;
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 1rem;
-  font-family: system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+/* The header stays fixed; long lists scroll with the page. */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-8);
+  height: var(--header-height);
+  padding: 0 var(--space-6);
+  border-bottom: var(--rule-strong);
+  background: var(--color-bg);
+}
+
+.brand {
+  align-self: center;
+  font-size: var(--font-size-brand);
+  font-weight: var(--font-weight-heavy);
+}
+
+.nav {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.nav a {
+  display: flex;
+  align-items: center;
+  /* The current item's bar sits on the header rule. */
+  margin-bottom: -2px;
+  border-bottom: 2px solid transparent;
+  font-size: var(--font-size-control);
+}
+
+.nav a:hover {
+  border-bottom-color: var(--color-divider);
+}
+
+.nav a.current {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.picker {
+  align-self: center;
+  margin-left: auto;
 }

@@ -19,9 +19,13 @@ Design decisions:
 - **API tests use `GraderApiFactory`, never `WebApplicationFactory<Program>` directly.** It points the API to a private in-memory SQLite database, so tests never touch `data/grader.db` (the API migrates its database on startup). As a class fixture, the database is shared by all tests of a class: each test arranges its own data with unique names (e.g. its own school year) and must not rely on counts of the whole table.
 - **Error cases assert the `code` of the problem details**, never `title` or `detail` (see [web-api.md](web-api.md#errors)).
 - **Integration tests are tagged** with `[Trait("Category", "Integration")]` so they can be run or skipped separately. Untagged tests are unit tests.
-- **Angular tests mock the generated API services, not `HttpClient`.** Components only depend on the typed service (e.g. `CalculatorService`), so tests provide `{ provide: XService, useValue: { method: vi.fn() } }` and stay independent of URLs. Error cases throw an `HttpErrorResponse` whose `error` is a problem details object, as the real API does.
-- **Angular tests are zoneless:** act, then `await fixture.whenStable()`, then assert. Do not use `fixture.detectChanges()`.
-- **E2E tests run against the production setup** (Angular built into `GraderApi/wwwroot`, backend published and started in the Production environment on port 5200). This covers SPA hosting by the backend, which the dev setup (Angular dev server + proxy) does not. See `GraderWeb/playwright.config.ts`.
+- **Angular tests mock the generated API services, not `HttpClient`.** Components only depend on the typed service (e.g. `ClassManagementService`), so tests provide `{ provide: XService, useValue: { method: vi.fn() } }` and stay independent of URLs. Error cases throw an `HttpErrorResponse` whose `error` is a problem details object, as the real API does.
+- **Angular tests are zoneless:** act, then `await fixture.whenStable()`, then assert. Do not use `fixture.detectChanges()`. Async actions that are not tracked as pending tasks (e.g. a Signal Forms submission awaiting a mocked API call) need one more macrotask (`await new Promise((r) => setTimeout(r))`) before the final `whenStable()`; see the `click` helper in `GraderWeb/src/app/classes/class-editor.spec.ts`.
+- **Component tests drive the DOM like a user:** set input values and dispatch `input` events, click buttons found by their accessible name (text or `aria-label`), assert rendered text, `aria-invalid` and focus. Route parameters are component inputs (`withComponentInputBinding`), so tests set them with `fixture.componentRef.setInput(...)`.
+- **What gets a component test:** base components with behavior (reference: `ConfirmDialog`) and editors with validation and save logic (reference: `ClassEditor`: request content, validation, server error). Pure layout is checked in the browser, not in component tests.
+- **E2E tests run against the production setup** (Angular built into `GraderApi/wwwroot`, backend published and started in the Production environment on port 5210). This covers SPA hosting by the backend, which the dev setup (Angular dev server + proxy) does not. See `GraderWeb/playwright.config.ts`.
+- **E2E tests use a temporary database, never `data/grader.db`.** The web server command deletes `<tmpdir>/grader-e2e/` and points the API to a new database there (`ConnectionStrings__Grader`). The Playwright project `setup` (`GraderWeb/e2e/demo-data.setup.ts`) runs first and fills it with demo data through the Settings page, which also covers the reset and the confirmation dialog.
+- **E2E tests are independent:** each test creates its own class with a unique name or does not save anything, and never relies on counts or on other tests' data. Tests run in parallel (`fullyParallel`).
 - Locators: Playwright uses roles and labels first (this also checks accessibility); `data-testid` is used for values without a natural role (e.g. the calculation result).
 
 ## QA script
@@ -32,7 +36,7 @@ Design decisions:
 - Only output of **failing** sections is printed. Full logs of all sections are in `.qa-logs/` (gitignored, recreated on every run).
 - All sections run even after a failure, so a single run reports all problems. Sections that depend on a failed build are skipped.
 - `--skip-e2e` skips the slowest section for quick feedback in between. The final run of a session must be the full run.
-- The E2E section fails if port 5200 is already in use, because Playwright would reuse the stale server (see Gotchas).
+- The E2E section fails if port 5210 is already in use and shows the blocking process (see Gotchas).
 
 ## Commands
 
@@ -61,5 +65,7 @@ cd GraderWeb && npm run e2e
 - Use `TestContext.Current.CancellationToken` for async calls in xUnit v3 tests (the xUnit analyzers warn otherwise).
 - Use `npm test`, not `ng test` directly, on a fresh clone: the `pretest` script generates the API client, which is not committed (see [api-client.md](api-client.md)). `ng test` runs in watch mode in interactive terminals.
 - E2E must run the **published** backend. When the build output (`dotnet run`) runs in Production, `MapStaticAssets` answers compressed requests (`Accept-Encoding: gzip/br`, i.e. every browser request) with empty `200` responses, because the precompressed files only exist in `obj/` and are only mapped in Development. The page stays blank.
-- Playwright reuses a server that already listens on port 5200 (outside of CI). Stop stale instances if E2E tests test an outdated build.
+- Playwright never reuses a server that already listens on port 5210 (`reuseExistingServer: false`): it might use another database, and the tests reset all data. Stop the stale instance instead.
+- **jsdom has no modal dialogs** (`HTMLDialogElement.showModal`/`close`). `GraderWeb/src/test-setup.ts` (registered as `setupFiles` in `angular.json`) adds a minimal polyfill incl. the `close` event. Browser behavior like the focus trap or Escape is only covered by E2E tests.
+- **Signal Forms focus/typing timing:** after "Add student", the new input is focused in `afterNextRender`. E2E tests wait with `expect(...).toBeFocused()` before typing; `page.keyboard.type` right after the click would type into the button.
 - Building `GraderTests` builds `GraderApi`, which regenerates `GraderApi/openapi/GraderApi.json` (see [api-client.md](api-client.md)). A changed spec after running tests means the API contract changed.

@@ -1,0 +1,132 @@
+<form class="page" [formRoot]="classForm" novalidate>
+  <nav class="breadcrumb small" aria-label="Breadcrumb">
+    <a class="link" routerLink="/classes" href="/classes">Classes</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ title() }}</span>
+  </nav>
+  <h1 class="visually-hidden">{{ isNew() ? 'New class' : 'Class ' + title() }}</h1>
+
+  @if (loaded.error()) {
+    <app-load-error subject="The class" [error]="loaded.error()" (retry)="loaded.reload()" />
+  } @else if (!isNew() && !savedClass()) {
+    <div class="head" role="status" aria-busy="true" aria-label="Loading class">
+      <div class="field">
+        <app-skeleton width="80px" height="12px" />
+        <app-skeleton width="184px" height="40px" />
+      </div>
+    </div>
+    <div class="section">
+      <app-skeleton width="120px" height="24px" />
+      <div class="skeleton-rows">
+        @for (row of skeletonRows; track row) {
+          <div class="skeleton-row">
+            <app-skeleton width="16px" height="12px" />
+            <app-skeleton width="160px" height="12px" />
+            <app-skeleton width="120px" height="12px" />
+          </div>
+        }
+      </div>
+    </div>
+  } @else {
+    <div class="head">
+      <label class="field">
+        <span class="field-label">Class name</span>
+        <input
+          class="input class-name"
+          [formField]="classForm.name"
+          [attr.aria-invalid]="ariaInvalid(classForm.name)"
+          aria-describedby="class-name-error"
+        />
+        <app-field-error id="class-name-error" [field]="classForm.name" />
+      </label>
+
+      <div class="toolbar actions">
+        @if (serverError(); as message) {
+          <p class="error-text" role="alert">{{ message }}</p>
+        } @else if (showErrorCount()) {
+          <p class="error-text" role="status">
+            {{ invalidFieldCount() }}
+            {{ invalidFieldCount() === 1 ? 'field needs' : 'fields need' }} attention
+          </p>
+        } @else if (showSaved()) {
+          <p class="small muted" role="status">Saved</p>
+        }
+        @if (!isNew()) {
+          <button type="button" class="btn btn-ghost" [disabled]="busy()" (click)="deleteClass()">
+            {{ deleting() ? 'Deleting…' : 'Delete class' }}
+          </button>
+        }
+        <button type="button" class="btn btn-secondary" (click)="cancel()">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="busy()">
+          {{ classForm().submitting() ? 'Saving…' : 'Save class' }}
+        </button>
+      </div>
+    </div>
+
+    <section class="section" aria-labelledby="students-title">
+      <div class="section-head">
+        <h2 id="students-title" class="section-title">
+          Students <span class="count tabular">{{ classForm.students.length }}</span>
+        </h2>
+        <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="addStudent()">
+          Add student
+        </button>
+      </div>
+
+      <table class="table students">
+        <thead>
+          <tr>
+            <th scope="col" class="number">#</th>
+            <th scope="col">Last name</th>
+            <th scope="col">First name</th>
+            <th scope="col" class="remove"><span class="visually-hidden">Remove</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (student of classForm.students; track student; let index = $index) {
+            <tr [class.new-row]="student().value().id === null">
+              <td class="number tabular muted">{{ rowNumbers()[index] }}</td>
+              <td>
+                <input
+                  class="input"
+                  aria-label="Last name"
+                  [formField]="student.lastName"
+                  [attr.aria-invalid]="ariaInvalid(student.lastName)"
+                  [attr.aria-describedby]="'last-name-error-' + index"
+                />
+                <app-field-error [id]="'last-name-error-' + index" [field]="student.lastName" />
+              </td>
+              <td>
+                <input
+                  class="input"
+                  aria-label="First name"
+                  [formField]="student.firstName"
+                  [attr.aria-invalid]="ariaInvalid(student.firstName)"
+                  [attr.aria-describedby]="'first-name-error-' + index"
+                />
+                <app-field-error [id]="'first-name-error-' + index" [field]="student.firstName" />
+              </td>
+              <td class="remove">
+                <button
+                  type="button"
+                  class="btn btn-icon"
+                  [attr.aria-label]="removeLabel(student().value())"
+                  [disabled]="busy()"
+                  (click)="removeStudent(index)"
+                >
+                  <svg lucideX [size]="18" [strokeWidth]="2" aria-hidden="true"></svg>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4" class="empty muted">
+                No students yet. Add them with “Add student”.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+</form>

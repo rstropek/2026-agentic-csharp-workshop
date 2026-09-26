@@ -1,0 +1,41 @@
+.page-title {
+  margin-bottom: var(--space-6);
+}
+
+.section {
+  padding-bottom: var(--space-8);
+}
+
+.options {
+  display: flex;
+  gap: var(--space-6);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.options legend {
+  float: left;
+  margin-right: var(--space-2);
+  padding: 0;
+  line-height: 24px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-control);
+  cursor: pointer;
+}
+
+.option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.description {
+  max-width: 640px;
+  margin: var(--space-2) 0 var(--space-4);
+}

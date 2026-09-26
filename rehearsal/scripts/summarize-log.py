@@ -21,7 +21,7 @@ with opener(path, "rt") as f:
             continue
         if o.get("type") == "result":
             result = o
-        msg = o.get("message") or {}
+        msg = o.get("message") if isinstance(o.get("message"), dict) else {}
         content = msg.get("content") if isinstance(msg.get("content"), list) else []
         if o.get("type") == "assistant":
             for c in content:

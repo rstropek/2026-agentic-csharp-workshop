@@ -1,0 +1,60 @@
+.page-title,
+.detail-title {
+  font-weight: var(--font-weight-heavy);
+  line-height: 1.12;
+  letter-spacing: var(--letter-spacing-title);
+}
+
+.page-title {
+  font-size: var(--font-size-page-title);
+}
+
+.detail-title {
+  font-size: var(--font-size-detail-title);
+}
+
+.cell-title {
+  font-size: var(--font-size-detail-title);
+  font-weight: var(--font-weight-heavy);
+  line-height: 1.1;
+}
+
+.section-title {
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-heavy);
+  line-height: 1.3;
+}
+
+.small {
+  font-size: var(--font-size-small);
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.overline,
+.column-header {
+  color: var(--color-muted);
+  font-weight: var(--font-weight-regular);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-caps);
+}
+
+.overline {
+  font-size: var(--font-size-label);
+}
+
+.column-header {
+  font-size: var(--font-size-column-header);
+}
+
+.error-text {
+  color: var(--color-error-text);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

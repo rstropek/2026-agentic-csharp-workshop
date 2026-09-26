@@ -6,6 +6,12 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script>
+    // Applies the remembered theme before the app starts, so dark mode does not flash light (see ThemeService).
+    try {
+      if (localStorage.getItem('grader-theme') === 'dark') document.documentElement.dataset.theme = 'dark';
+    } catch {}
+  </script>
 </head>
 <body>
   <app-root></app-root>

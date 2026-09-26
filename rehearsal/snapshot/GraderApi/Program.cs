@@ -1,11 +1,9 @@
 using System.Reflection;
 using System.Text.Json.Serialization;
-using GraderApi.Calculator;
 using GraderApi.ClassManagement;
 using GraderApi.DemoData;
 using GraderApi.ErrorHandling;
 using GraderApi.Exams;
-using GraderLogic.Calculator;
 using GraderLogic.ClassManagement;
 using GraderLogic.Data;
 using GraderLogic.DemoData;
@@ -36,7 +34,6 @@ builder.Services.AddDbContext<GraderDbContext>((services, options) => options.Us
     services.GetRequiredService<IConfiguration>().GetConnectionString("Grader") ?? GraderDatabase.GetDefaultConnectionString()));
 builder.Services.AddSingleton(TimeProvider.System);
 
-builder.Services.AddSingleton<ICalculator, Calculator>();
 builder.Services.AddScoped<IClassManagementService, ClassManagementService>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<IDemoDataService, DemoDataService>();
@@ -60,7 +57,6 @@ if (app.Environment.IsDevelopment())
 }
 
 var api = app.MapGroup("/api");
-api.MapCalculatorEndpoints();
 api.MapClassManagementEndpoints();
 api.MapExamEndpoints();
 api.MapDemoDataEndpoints();

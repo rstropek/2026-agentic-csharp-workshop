@@ -1,0 +1,85 @@
+.breadcrumb {
+  display: flex;
+  gap: 6px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+  padding-bottom: var(--space-4);
+}
+
+.class-name {
+  width: 184px;
+  min-height: 40px;
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-heavy);
+}
+
+/* Aligned with the class name field, not with its label. */
+.actions {
+  margin-top: 21px;
+  min-height: 40px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.count {
+  margin-left: 4px;
+  color: var(--color-muted);
+  font-size: var(--font-size-control);
+  font-weight: var(--font-weight-regular);
+}
+
+.students {
+  table-layout: fixed;
+}
+
+.students .input {
+  width: 100%;
+}
+
+.number {
+  width: 74px;
+  padding-left: var(--space-2);
+}
+
+td.number {
+  padding-top: 13px;
+  font-size: var(--font-size-small);
+}
+
+.remove {
+  width: 64px;
+  padding-right: 0;
+}
+
+.new-row {
+  background: var(--color-accent-tint);
+}
+
+.empty {
+  padding: var(--space-6) 0;
+}
+
+.skeleton-rows {
+  margin-top: var(--space-6);
+  border-top: var(--rule-strong);
+}
+
+.skeleton-row {
+  display: grid;
+  grid-template-columns: 74px 1fr 1fr 64px;
+  align-items: center;
+  height: 49px;
+  padding-left: var(--space-2);
+  border-bottom: var(--rule);
+}
