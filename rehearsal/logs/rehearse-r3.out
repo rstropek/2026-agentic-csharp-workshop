@@ -276,3 +276,31 @@ I then revised the skill based on what the test agents found unclear. I did not 
 **Also in the commit:** `tech-docs/cli.md` and `AGENTS.md` now point to the skill and say to update it when teacher workflows change. The test prompts are in `/tmp/grader-cli-workspace/evals.json` and not committed; tell me if you'd like them in the repo
 --- after step8b: branch=main head=eef3928 Add grader-cli skill for teacher tasks with the CLI
 OK step8b
+committed step 8b
+=== step 8c (18:10:55)
+demo data reset (/api/demo-data)
+Duration: 37s
+success turns: 9 cost: 0.2991962
+Class 1D and its first Mathematics test are now in Grader.
+
+**Class 1D (school year 2026/27)** has 8 students: Lena Huber, Jonas Gruber, Sophie Wagner, Elias Bauer, Mia Steiner, Felix Moser, Hannah Hofer and Paul Leitner.
+
+**Mathematics exam on 22 September 2026:** 7 results entered.
+
+| Student | Result |
+|---|---|
+| Elias Bauer | 45 % |
+| Jonas Gruber | 91.5 % |
+| Hannah Hofer | no result (sick) |
+| Lena Huber | 78 % |
+| Paul Leitner | 55 % |
+| Felix Moser | 72 % |
+| Mia Steiner | 88 % |
+| Sophie Wagner | 64 % |
+
+- I put 1D in 2026/27 because it's the current school year. The class didn't exist yet in that year.
+- Hannah has no result rather than 0 %, so her absence won't pull down averages. If she sits a make-up test, give me the percentage and I'll add it to this exam.
+- The class average for this test is 70.5 % across the 7 students who took it.
+
+Separately, the Gmail, Google Calendar and Google Drive connectors need to be authorized in your claude.ai connector settings before they can be used, and Leo Wiki failed to connect this session. None of them were needed here.
+--- after 8c (expected: no changes)
