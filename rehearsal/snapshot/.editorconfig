@@ -1,0 +1,125 @@
+# Editor configuration, see https://editorconfig.org
+# C# code style is enforced on build (EnforceCodeStyleInBuild in Directory.Build.props) and by `dotnet format`.
+# Only rules with severity warning/error are enforced; warnings are errors. See tech-docs/code-quality.md.
+# GraderWeb has its own .editorconfig (root = true), Biome enforces formatting there.
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 2
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+indent_size = 4
+max_line_length = 150
+
+#### Formatting (IDE0055) ####
+dotnet_diagnostic.IDE0055.severity = warning
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_after_cast = false
+csharp_space_around_binary_operators = before_and_after
+csharp_preserve_single_line_blocks = true
+csharp_preserve_single_line_statements = false
+
+#### Code style (enforced) ####
+# Unnecessary usings (requires GenerateDocumentationFile, see Directory.Build.props)
+dotnet_diagnostic.IDE0005.severity = warning
+# File-scoped namespaces, usings outside of the namespace, namespace matches folder
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_style_namespace_match_folder = true:warning
+# Braces for all control flow statements
+csharp_prefer_braces = true:warning
+# No "this." qualification, language keywords instead of BCL type names
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
+dotnet_style_predefined_type_for_locals_parameters_members = true:warning
+dotnet_style_predefined_type_for_member_access = true:warning
+# Explicit accessibility modifiers, consistent modifier order, readonly fields
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+csharp_preferred_modifier_order = public,private,protected,internal,file,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,required,volatile,async:warning
+dotnet_style_readonly_field = true:warning
+# var wherever possible
+csharp_style_var_for_built_in_types = true:warning
+csharp_style_var_when_type_is_apparent = true:warning
+csharp_style_var_elsewhere = true:warning
+# Dead code: unused private members, unused parameters, unnecessary assignments, unnecessary casts
+dotnet_diagnostic.IDE0051.severity = warning
+dotnet_diagnostic.IDE0052.severity = warning
+dotnet_code_quality_unused_parameters = all:warning
+csharp_style_unused_value_assignment_preference = discard_variable:warning
+dotnet_diagnostic.IDE0004.severity = warning
+
+#### Code style (suggestions only, not enforced) ####
+csharp_style_prefer_primary_constructors = true:suggestion
+csharp_style_implicit_object_creation_when_type_is_apparent = true:suggestion
+dotnet_style_prefer_collection_expression = when_types_loosely_match:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+
+#### Naming (IDE1006) ####
+dotnet_diagnostic.IDE1006.severity = warning
+
+dotnet_naming_rule.interfaces_should_be_ipascalcase.symbols = interfaces
+dotnet_naming_rule.interfaces_should_be_ipascalcase.style = ipascalcase
+dotnet_naming_rule.interfaces_should_be_ipascalcase.severity = warning
+
+dotnet_naming_rule.type_parameters_should_be_tpascalcase.symbols = type_parameters
+dotnet_naming_rule.type_parameters_should_be_tpascalcase.style = tpascalcase
+dotnet_naming_rule.type_parameters_should_be_tpascalcase.severity = warning
+
+dotnet_naming_rule.constants_should_be_pascalcase.symbols = constants
+dotnet_naming_rule.constants_should_be_pascalcase.style = pascalcase
+dotnet_naming_rule.constants_should_be_pascalcase.severity = warning
+
+dotnet_naming_rule.private_fields_should_be_camelcase.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_camelcase.style = camelcase
+dotnet_naming_rule.private_fields_should_be_camelcase.severity = warning
+
+dotnet_naming_rule.locals_and_parameters_should_be_camelcase.symbols = locals_and_parameters
+dotnet_naming_rule.locals_and_parameters_should_be_camelcase.style = camelcase
+dotnet_naming_rule.locals_and_parameters_should_be_camelcase.severity = warning
+
+dotnet_naming_rule.types_and_members_should_be_pascalcase.symbols = types_and_members
+dotnet_naming_rule.types_and_members_should_be_pascalcase.style = pascalcase
+dotnet_naming_rule.types_and_members_should_be_pascalcase.severity = warning
+
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_symbols.type_parameters.applicable_kinds = type_parameter
+dotnet_naming_symbols.constants.applicable_kinds = field, local
+dotnet_naming_symbols.constants.required_modifiers = const
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private, protected, protected_internal, private_protected
+dotnet_naming_symbols.locals_and_parameters.applicable_kinds = local, parameter
+dotnet_naming_symbols.types_and_members.applicable_kinds = namespace, class, struct, enum, delegate, property, method, event, field, local_function
+
+dotnet_naming_style.pascalcase.capitalization = pascal_case
+dotnet_naming_style.camelcase.capitalization = camel_case
+dotnet_naming_style.ipascalcase.capitalization = pascal_case
+dotnet_naming_style.ipascalcase.required_prefix = I
+dotnet_naming_style.tpascalcase.capitalization = pascal_case
+dotnet_naming_style.tpascalcase.required_prefix = T
+
+# Tests use underscores in method names (Method_Scenario_Expectation)
+[GraderTests/**.cs]
+dotnet_diagnostic.CA1707.severity = none

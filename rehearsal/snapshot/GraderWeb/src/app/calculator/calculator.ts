@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import { form, FormField, FormRoot, required, SchemaPath, validate } from '@angular/forms/signals';
+import { FormField, FormRoot, form, required, SchemaPath, validate } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 import { CalculatorService, ProblemDetails } from '../api';
 

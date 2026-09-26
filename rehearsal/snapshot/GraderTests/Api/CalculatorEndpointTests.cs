@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using GraderApi.Calculator;
 using GraderLogic.Calculator;
 using Microsoft.AspNetCore.Mvc;

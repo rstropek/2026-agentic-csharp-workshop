@@ -21,6 +21,16 @@ Design decisions:
 - **E2E tests run against the production setup** (Angular built into `GraderApi/wwwroot`, backend published and started in the Production environment on port 5200). This covers SPA hosting by the backend, which the dev setup (Angular dev server + proxy) does not. See `GraderWeb/playwright.config.ts`.
 - Locators: Playwright uses roles and labels first (this also checks accessibility); `data-testid` is used for values without a natural role (e.g. the calculation result).
 
+## QA script
+
+`scripts/qa.sh` (repo root) runs the full QA baseline: `dotnet format` check, .NET build (analyzers, warnings as errors), .NET unit and integration tests, Biome, Angular build, Angular component tests and E2E tests. Linting and formatting are described in [code-quality.md](code-quality.md).
+
+- Output: one `=== [n] <section> ===` block per tool ending in `--- PASS|FAIL|SKIP: <section>`, then `=== SUMMARY ===` and a final `QA RESULT: PASS|FAIL` line. Exit code `1` if any section failed.
+- Only output of **failing** sections is printed. Full logs of all sections are in `.qa-logs/` (gitignored, recreated on every run).
+- All sections run even after a failure, so a single run reports all problems. Sections that depend on a failed build are skipped.
+- `--skip-e2e` skips the slowest section for quick feedback in between. The final run of a session must be the full run.
+- The E2E section fails if port 5200 is already in use, because Playwright would reuse the stale server (see Gotchas).
+
 ## Commands
 
 Run from the repository root unless stated otherwise.

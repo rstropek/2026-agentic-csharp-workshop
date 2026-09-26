@@ -30,6 +30,16 @@ cd GraderApi/bin/publish && ASPNETCORE_URLS=http://localhost:5200 dotnet GraderA
 
 Use `npm start`/`npm run build`/`npm test` instead of the plain `ng` commands: the npm pre-scripts regenerate the API client first. Test commands: see `tech-docs/testing.md`.
 
+## Quality Gate
+
+At the end of each session that modified code, run the full QA baseline and fix all issues until it passes:
+
+```bash
+scripts/qa.sh              # all checks and tests; exit code 0 = pass
+```
+
+Do not suppress findings (`#pragma`, `NoWarn`, `biome-ignore`, severity changes) to make it pass unless the user agrees. Auto-fix formatting with `dotnet format` (repo root) and `npm run fix` (in `GraderWeb`). Details: `tech-docs/code-quality.md`, `tech-docs/testing.md`.
+
 ## Technology Versions
 
 - .NET, Angular and other technologies used here might be newer than you expect. Do not rely on your training data for APIs; verify with current docs.
@@ -49,6 +59,7 @@ Use the installed skills to research up-to-date documentation. Priority:
 `tech-docs/` contains project-specific technical documentation. Agents are the primary audience. Read the relevant articles before working in an area.
 
 - [testing.md](tech-docs/testing.md): testing strategy per layer (.NET unit/integration, Angular component, Playwright E2E), test commands, and testing gotchas.
+- [code-quality.md](tech-docs/code-quality.md): QA baseline (C# analyzers and code style, Biome, Angular compiler checks), where each is configured, and the reasons for deviations from defaults.
 - [api-client.md](tech-docs/api-client.md): how the OpenAPI spec is generated at build time and turned into the Angular API client, how to design endpoints for a good client, and generation commands.
 
 Maintain the tech docs as part of every change:

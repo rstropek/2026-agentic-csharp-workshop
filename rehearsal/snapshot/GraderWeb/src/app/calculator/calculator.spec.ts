@@ -24,7 +24,8 @@ describe('Calculator', () => {
     inputA.dispatchEvent(new Event('input'));
     inputB.value = b;
     inputB.dispatchEvent(new Event('input'));
-    element.querySelector('button')!.click();
+    const [button] = Array.from(element.querySelectorAll('button'));
+    button.click();
     await fixture.whenStable();
   }
 

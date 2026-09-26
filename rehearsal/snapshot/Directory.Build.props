@@ -1,0 +1,15 @@
+<Project>
+
+  <!-- QA baseline for all .NET projects (see tech-docs/code-quality.md). -->
+  <PropertyGroup>
+    <!-- .NET code analysis (CA rules) with the recommended rule set -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <!-- Run IDE code-style rules configured in .editorconfig on build -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Required for IDE0005 (unnecessary usings) on build. Missing XML comments (CS1591) are not enforced. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+</Project>

@@ -51,3 +51,41 @@ All of these are written up as gotchas in `tech-docs/testing.md` and `tech-docs/
 Separately, the Gmail, Google Calendar and Google Drive connectors need to be authorized in your claude.ai connector settings before they can be used. The Leo Wiki server also failed to 
 --- after step3: branch=main head=d6a213a Add calculator smoke test across logic, API, Angular and tests
 OK step3
+committed step 3
+=== step 4 (16:32:25)
+Duration: 520s
+success turns: 40 cost: 2.6629717999999993
+The QA baseline is set up and committed to main as `33162c6`. `scripts/qa.sh` passes on the current code and caught every mistake I planted in the proof run.
+
+**What's in place**
+- **C#:** `Directory.Build.props` turns on .NET code analysis (recommended rule set), runs the code-style rules on build, and treats warnings as errors. The rules are in a new root `.editorconfig`, and `dotnet format` is the formatter. Rules set to "warning" fail the build; preferences that would cause churn (primary constructors, expression bodies, etc.) stay as IDE suggestions only.
+- **Angular:** Biome replaces Prettier: linting, formatting, import sorting and HTML linting. New scripts are `npm run check` and `npm run fix`. I also made Angular's template checks errors: by default they're only warnings and the build succeeds. I confirmed that with the proof mistake.
+- **`scripts/qa.sh`** runs 8 sections: `dotnet format`, .NET build, .NET unit tests, .NET integration tests, Biome, Angular build, Angular component tests and E2E tests.
+  - Each section ends with PASS/FAIL/SKIP, and there's a summary at the end. The exit code is 1 on any failure.
+  - It prints output only for failing sections; full logs go to `.qa-logs/`, which is gitignored.
+  - It keeps running after a failure, and skips only sections that depend on a failed build.
+  - `--skip-e2e` gives quicker feedback between steps.
+  - A full run takes about 15 seconds.
+- **Docs:** `AGENTS.md` now requires a full QA run at the end of every session that changed code, and says not to suppress findings to make it pass unless you agree. I added `tech-docs/code-quality.md` and a "QA script" section in `tech-docs/testing.md`.
+
+**Changes to existing code:** two unnecessary usings removed in the tests, imports sorted, a few config files reformatted, and one `!` removed in a component test.
+
+**Proof run:** I planted these mistakes, ran the script, then reverted them:
+
+| Mistake | Caught by |
+| --- | --- |
+| C#: unnecessary using, bad formatting, `int` instead of `var`, `if` without braces | `dotnet format` and .NET build |
+| C#: unused local variable (compiler warning CS0219) | .NET build |
+| TypeScript: unused import, `==` | Biome |
+| TypeScript: bad spacing, double quotes, missing semicolon | Biome |
+| Template: `<img>` without `alt` | Biome |
+| Template: signal used without calling it (`{{ result }}`) | Angular build and component tests |
+
+The script exited with 1: 5 sections failed and 3 were skipped because the builds they depend on had failed.
+
+**Decisions you might want to revisit:**
+- **Biome doesn't format HTML templates.** Its HTML formatter mangles Angular's `@if` blocks, so I turned it off. Templates are still linted but have to be formatted by hand.
+- **Two Biome rules are off.** `useLiteralKeys` conflicts with the TypeScript setting that requires `process.env['CI']`. `useImportType` can break Angular constructor injection, and Biome's own docs advise disabling it for Angular.
+- **Tests keep underscores in method
+--- after step4: branch=main head=33162c6 Add QA baseline: analyzers, code style, Biome and QA script
+OK step4

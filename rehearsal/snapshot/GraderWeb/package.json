@@ -11,7 +11,9 @@
     "watch": "ng build --watch --configuration development",
     "pretest": "npm run generate:api",
     "test": "ng test",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "check": "biome check --error-on-warnings",
+    "fix": "biome check --write"
   },
   "private": true,
   "packageManager": "npm@11.12.1",
@@ -29,10 +31,10 @@
     "@angular/build": "^22.2.0",
     "@angular/cli": "^22.2.0",
     "@angular/compiler-cli": "^22.2.0",
+    "@biomejs/biome": "2.5.14",
     "@playwright/test": "^1.63.0",
     "jsdom": "^30.0.0",
     "ng-openapi": "^0.4.1",
-    "prettier": "^3.8.1",
     "typescript": "~6.0.2",
     "vitest": "^5.0.0"
   }
