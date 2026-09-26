@@ -1,0 +1,7 @@
+:host {
+  display: block;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1rem;
+  font-family: system-ui, sans-serif;
+}

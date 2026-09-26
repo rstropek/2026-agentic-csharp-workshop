@@ -20,3 +20,34 @@ Unrelated to this task: the Gmail, Google Calendar and Google Drive connectors n
 --- after step2: branch=main head=04b55a4 Add AGENTS.md and install agent skills
 OK step2
 OK no CLAUDE.md
+committed step 2
+=== step 3 (16:19:07)
+Duration: 798s
+success turns: 55 cost: 3.8404458000000012
+The calculator smoke test works end to end and is committed to `main` as `d6a213a`; the working tree is clean. To check it, I deleted the generated client, `wwwroot` and all .NET `bin`/`obj`, then rebuilt and ran every suite from scratch:
+
+- **.NET build:** 0 warnings, 0 errors.
+- **.NET tests:** 10/10 pass. That's 5 unit tests (the Add method, and the endpoint with mocked logic) and 5 integration tests (real logic, OpenAPI JSON, `/scalar`).
+- **Angular component tests:** 3/3 pass (Vitest, with the API mocked).
+- **Playwright e2e:** 2/2 pass.
+
+Each layer has a regular case and an error case.
+
+**Decisions you might want to change:**
+- **Endpoint:** it's `GET /api/calculator/add?a=&b=`. Domain errors come back as 400 problem details. Every exception derived from a base class `GraderLogicException` gets that treatment, so future domain errors work the same way.
+- **What's committed:** the OpenAPI spec is written to `GraderApi/openapi/GraderApi.json` on every build and committed, so API changes show up as a diff. The generated Angular client in `GraderWeb/src/app/api/` is not committed. `npm start`, `npm run build` and `npm test` regenerate it first. On a fresh clone the IDE shows TypeScript errors until one of those has run.
+- **Hosting:** in Development, `ng serve` serves the app and proxies `/api` to the backend. In every other environment the backend serves the Angular app, which builds into `GraderApi/wwwroot`. OpenAPI and Scalar are only available in Development.
+- **E2E setup:** the Playwright test builds Angular, publishes the backend and runs it in Production mode, so it covers the backend serving the built app.
+
+**Problems I found and fixed:**
+- **Numbers typed as `number | string`:** .NET's default JSON settings made the spec describe every integer as "integer or string", so the TypeScript client got `number | string`. I made number handling strict.
+- **Doubled `/api` prefix:** the generated client's default base path is `/api`, but the spec's paths already include it, so calls went to `/api/api/...`. The app now sets the base path to empty.
+- **Blank page with `dotnet run` in Production:** the backend returned empty responses for compressed JS, so the page stayed blank. Running the published app works, so the e2e test and the documented production commands use `dotnet publish`.
+- **Decimals and empty fields:** entering a decimal caused a server error with no message. The form now requires whole numbers and disables Calculate until both fields are valid.
+- **Unknown `/api` routes:** these now return 404 instead of the Angular page.
+
+All of these are written up as gotchas in `tech-docs/testing.md` and `tech-docs/api-client.md`. `AGENTS.md` now has the commands to start the app, a one-line summary of each tech doc, and rules for keeping the docs up to date.
+
+Separately, the Gmail, Google Calendar and Google Drive connectors need to be authorized in your claude.ai connector settings before they can be used. The Leo Wiki server also failed to 
+--- after step3: branch=main head=d6a213a Add calculator smoke test across logic, API, Angular and tests
+OK step3

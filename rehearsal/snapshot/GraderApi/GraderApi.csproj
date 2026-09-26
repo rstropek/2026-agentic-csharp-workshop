@@ -6,6 +6,19 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- Build-time OpenAPI generation (Microsoft.Extensions.ApiDescription.Server).
+       The spec is committed and is the input for the Angular API client generator (see tech-docs/api-client.md). -->
+  <PropertyGroup>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/openapi</OpenApiDocumentsDirectory>
+    <OpenApiGenerationEnvironment>Development</OpenApiGenerationEnvironment>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The spec is a build artifact for tooling, not something the app serves from disk. -->
+    <Content Remove="openapi/**" />
+    <None Include="openapi/**" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0-rc.1.26425.128" />
     <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="11.0.0-rc.1.26425.128">

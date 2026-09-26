@@ -29,6 +29,15 @@ yarn-error.log
 !.vscode/mcp.json
 .history/*
 
+# Generated API client (regenerated from ../GraderApi/openapi/GraderApi.json by the npm scripts)
+/src/app/api/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # Miscellaneous
 /.angular/cache
 .sass-cache/

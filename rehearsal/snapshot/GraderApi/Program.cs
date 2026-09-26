@@ -1,41 +1,43 @@
+using System.Text.Json.Serialization;
+using GraderApi.Calculator;
+using GraderApi.ErrorHandling;
+using GraderLogic.Calculator;
+using Scalar.AspNetCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+// Web defaults allow numbers as JSON strings, which makes OpenAPI describe every number as
+// "integer | string" and the generated TypeScript client type them as "number | string".
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GraderLogicExceptionHandler>();
+
+builder.Services.AddSingleton<ICalculator, Calculator>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseExceptionHandler();
+app.UseHttpsRedirection();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
+var api = app.MapGroup("/api");
+api.MapCalculatorEndpoints();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+// Unknown API routes must return 404 instead of falling through to the SPA's index.html.
+api.MapFallback(() => TypedResults.NotFound()).ExcludeFromDescription();
 
-app.MapGet("/weatherforecast", () =>
+// Outside of Development, the backend serves the Angular app (built into wwwroot) incl. client-side routes.
+// In Development, the Angular dev server serves the app and proxies /api to this backend.
+if (!app.Environment.IsDevelopment())
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    app.MapStaticAssets();
+    app.MapFallbackToFile("index.html");
+}
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

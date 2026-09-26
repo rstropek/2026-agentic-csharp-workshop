@@ -1,0 +1,30 @@
+<h2>Calculator</h2>
+
+<form [formRoot]="calculatorForm">
+  <label>
+    First number
+    <input type="number" [formField]="calculatorForm.a" />
+    @if (calculatorForm.a().touched() && calculatorForm.a().errors().length) {
+      <span class="error">{{ calculatorForm.a().errors()[0].message }}</span>
+    }
+  </label>
+  <label>
+    Second number
+    <input type="number" [formField]="calculatorForm.b" />
+    @if (calculatorForm.b().touched() && calculatorForm.b().errors().length) {
+      <span class="error">{{ calculatorForm.b().errors()[0].message }}</span>
+    }
+  </label>
+  <button type="submit" [disabled]="calculatorForm().invalid() || calculatorForm().submitting()">
+    Calculate
+  </button>
+</form>
+
+@if (result() !== undefined) {
+  <p>
+    Result: <output data-testid="result">{{ result() }}</output>
+  </p>
+}
+@if (error()) {
+  <p class="error" role="alert" data-testid="error">{{ error() }}</p>
+}
