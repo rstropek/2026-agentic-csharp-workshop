@@ -626,3 +626,132 @@ Links:
 * [Claude in Chrome](https://code.claude.com/docs/en/chrome)
 * [Playwright project dependencies (setup)](https://playwright.dev/docs/test-global-setup-teardown), [Playwright web server](https://playwright.dev/docs/test-webserver)
 * [`<dialog>` element](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/dialog), [Fontsource Archivo](https://fontsource.org/fonts/archivo), [`@lucide/angular`](https://www.npmjs.com/package/@lucide/angular)
+
+
+## Step 8 – CLI + skill: make the app usable for agents
+
+Goal: a **command-line interface** for the existing application plus a **skill** that teaches agents how to use it. Afterwards, an agent does tasks a teacher would otherwise click through in the UI – in seconds and for cents. Four prompts: 8a builds the CLI, 8b creates the skill (with the `skill-creator` skill from step 2), 8c and 8d are **no coding prompts** but requests of a teacher.
+
+Why a CLI? In step 7 the agent operated the UI through the browser: slow, expensive, fragile. A CLI is the cheapest interface for agents: discoverable (`--help`), scriptable, composable (JSON → `jq`/Python), and humans can use it too. The skill adds what `--help` can't: which workflows exist, in which order, and where the sharp edges are.
+
+Design decisions to discuss before the prompt:
+
+* **Generated client (Kiota) instead of reusing the DTOs from `GraderLogic`:** the DTOs live next to the `DbContext`; referencing them would pull EF Core, SQLite (incl. native binaries) and Bogus into the tool – and tempt an agent to "simplify" by calling the services or the database directly, bypassing the API. The OpenAPI spec is the contract; after the Angular client (step 3) it now feeds a second, generated client
+* **Mirror the API:** one command per endpoint, but with short command names that are nice to use for humans too; ids as arguments, saving takes the complete document (same parent/child semantics as the API, see `web-api.md`), no convenience commands – the skill teaches the workflows instead
+* **Generated client committed**, regenerating it is a dedicated step (not on every build) → rule in AGENTS.md: every structural API change includes regenerating the CLI client
+* **.NET global tool:** easy – three csproj properties (`PackAsTool`, `ToolCommandName`, `PackageId`), `dotnet pack`, `dotnet tool install -g --add-source <folder>`; no code changes. Since .NET 10, `dnx <package>` runs a tool without installing it
+
+Prompt 8a (CLI):
+
+```text
+Add a command-line interface (CLI) for Grader: a new .NET console project GraderCli that mirrors the Web API. Its main users are AI agents doing tasks for a teacher; humans use it too.
+
+- One command per Web API use case, with short command names that are nice to use for humans too (e.g. `grader classes get 7`). Mirror the API: ids as arguments, saving takes the complete document as JSON (file or stdin, same shape as the API request), no convenience commands.
+- Call the API through a client generated from the OpenAPI spec with Kiota; don't reference GraderLogic. The generated code is committed and regenerated only as a dedicated step, not on every build: add a rule to AGENTS.md that every structural API change includes regenerating the CLI client (and how).
+- API base URL via option and environment variable, default: the local development API.
+- Agent-friendly: JSON output besides readable text, errors on stderr incl. the API's error code, meaningful exit codes, never prompt (destructive commands require --yes), --help with examples.
+- Package it as a .NET global tool (command `grader`).
+- Exemplary tests: a command running against the Web API in memory; an API error becoming an error message and exit code.
+- New tech docs article tech-docs/cli.md (incl. building, installing and updating the tool); update AGENTS.md, testing.md and api-client.md.
+- Done when the CLI works against the running API and the QA script is green. Then commit directly to main.
+```
+
+Rehearsal 8a: ~14 min, no questions. Most of the time went into research (Kiota with the OpenAPI 3.2 spec, the System.CommandLine release matching the .NET 11 SDK, its help customization) and into trying every command against a real API on a temporary database.
+
+What the agent built in 8a (details differ from run to run):
+
+* `GraderCli` (System.CommandLine 3.0 RC – ships with .NET, so the AGENTS.md version rule picked the RC matching the SDK) with command groups = OpenAPI tags, commands = operation names: `grader class-management get-class 7`, `grader exams save-exam 12 --input exam.json`, `grader demo-data reset-demo-data --yes`. That rehearsal ran with a prompt that did not ask for short names – consistent and predictable for agents, but clumsy for humans. The prompt now asks for short names; the command names in this section and in the demo below are from that run and will change with the next rehearsal
+* `--json` (results on stdout, errors on stderr, both JSON), error `code` from the Problem Details, exit codes 0–6 (2 = invalid input/missing `--yes`, nothing sent; 3/4/5 = HTTP 400/404/409; 6 = API not reachable), `--help` with examples and the exit codes; `--api-url` / `GRADER_API_URL` / default `http://localhost:5100`
+* Kiota client in `GraderCli/ApiClient/` (committed, marked as generated code in `.editorconfig`); `scripts/generate-cli-client.sh` regenerates it, and with `--check` it is a **new QA step** that fails if the client is out of date – the agent turned the AGENTS.md rule into a check
+* AGENTS.md: new section "API Changes" (both generated clients must follow every API change in the same commit; how to regenerate the CLI client; mirror new endpoints as commands)
+* `scripts/install-cli.sh`: packs and installs/updates the global tool
+* 2 tests: CLI in-process against the Web API in memory (`WebApplicationFactory`'s `HttpClient` passed to the Kiota adapter), API error → error code + exit code
+* `tech-docs/cli.md` (principles, exit codes, structure, adding a command, Kiota, installing, testing, gotchas); `api-client.md`, `testing.md` updated
+
+Prompt 8b (skill):
+
+```text
+Use the skill-creator skill to create a project skill `grader-cli` (in .agents/skills/, linked into .claude/skills/ like the other skills) that teaches agents to do a teacher's everyday tasks in Grader with the CLI: e.g. setting up a class from a list of names, recording exam results, answering questions about grades.
+
+- Focus on workflows and pitfalls, don't repeat --help (e.g. finding ids, saving complete documents, the API must be running, destructive commands only when the teacher asks for them).
+- Keep the evaluation light: 2–3 realistic test tasks against the running development API with demo data, no benchmark or review viewer.
+- Done when the QA script is green. Then commit directly to main.
+```
+
+Before 8b: start the API in a second terminal (`dotnet run --project GraderApi`) and reset the demo data (Settings in the UI, or `grader demo-data reset-demo-data --yes`).
+
+Rehearsal 8b: ~5 min. The agent followed the skill-creator process in a light version: explored the CLI hands-on, wrote the draft, then ran 3 test tasks **with and without the skill in parallel subagents** – the baselines against a second API instance on a copy of the database, so they could not interfere. Both variants solved all tasks; with the skill the agents were faster and needed fewer commands (without it they guessed commands like `grader classes --help`). One finding changed the skill: it had said "one decimal is plenty" and the agent rounded 98.75 % to 98.8 % → now "store the exact value". Afterwards the agent cleaned up its test data in the development database.
+
+What the agent built in 8b:
+
+* `.agents/skills/grader-cli/SKILL.md` (~100 lines) + link in `.claude/skills/`; a "pushy" description (triggers on "a teacher pastes a list of names or scores", even without mentioning the CLI)
+* Content: find the CLI and check the API first; `--json` for the agent, tables for the teacher; ids only via navigation (school year → class → exam, never from memory – ids change with `reset-demo-data`); **complete-document saves: get → edit → save, compare before saving**; destructive commands only on explicit request, never delete to get around a rule; workflows (class from a list of names incl. name formats and duplicates, recording results incl. points → percent and "absent = no result, not 0", answering questions: percentages, not grades); table of error codes → what to do
+* `tech-docs/cli.md`: when the skill must be updated
+
+Prompt 8c (a teacher's request – run it in a **new session**):
+
+```text
+I'm taking over a new class this school year, 1D. Students: Lena Huber, Jonas Gruber, Sophie Wagner, Elias Bauer, Mia Steiner, Felix Moser, Hannah Hofer, Paul Leitner.
+
+They wrote their first Mathematics test on 22 September 2026: Huber 78 %, Gruber 91.5 %, Wagner 64 %, Bauer 45 %, Steiner 88 %, Moser 72 %, Leitner 55 %. Hannah was sick.
+
+Please enter all of this in Grader.
+```
+
+Rehearsal 8c: 36 s, $0.31. The agent loaded the `grader-cli` skill by itself, checked the school year and that 1D is free, created the class, mapped the names to the new student ids and created the exam – Hannah without a result instead of 0 %.
+
+Prompt 8d (a question, new session):
+
+```text
+Which three students had the lowest average result in Mathematics in school year 2025/26? Show their class and average.
+```
+
+Rehearsal 8d: 1 min, $0.32. The agent fetched all Mathematics exams of the 10 classes of 2025/26 (`--json` into a temp folder), computed the averages with Python and answered with a table – incl. how many results each average is based on and the hint that one student only has 2 of 4 results (the skill's "say how many results an average is based on"). Checked against the database: correct.
+
+Demo:
+
+```bash
+dotnet run --project GraderApi                       # terminal 1: API on :5100
+scripts/install-cli.sh                               # terminal 2: pack + install the global tool
+grader --help                                        # groups, examples, exit codes
+grader class-management get-school-years            # ids change with every demo data reset
+grader class-management get-classes <year-id>
+grader class-management get-class <class-id> --json | jq '.students | length'
+grader exams delete-exam 1; echo $?                  # confirmation-required, exit code 2
+grader class-management get-class 99999; echo $?     # class-not-found, exit code 4
+```
+
+1. `grader --help`, then the same with `dnx`: `dnx GraderCli --add-source GraderCli/nupkg --prerelease --yes -- --help` (runs without installing; the package has a `-dev` prerelease version)
+2. `tech-docs/cli.md` + the "API Changes" rule in AGENTS.md; `scripts/generate-cli-client.sh --check` in the QA script
+3. `.agents/skills/grader-cli/SKILL.md`: what's in there that `--help` doesn't say
+4. New session → prompt 8c → check class 1D in the UI (step 7)
+5. New session → prompt 8d
+6. Variation: paste a photo of a handwritten grade sheet instead of the text list
+
+Things to show/discuss:
+
+* **CLI + skill vs. MCP server:** the CLI costs no tokens until it is used, its output can be piped and filtered before it reaches the context (8d: 40 exams went through Python, only the result reached the model), and humans and scripts use the same tool. MCP shines where there is no shell (e.g. claude.ai, mobile) or for remote/authenticated access
+* Command names: without a hint, the agent derived them 1:1 from tag + operation name (`grader class-management get-class`, `grader demo-data reset-demo-data`) – agents don't care, humans do. One line in the prompt fixes it; a CLI serves both audiences
+* Gotchas the agent found and documented:
+  * Kiota's JSON parser silently **drops values of the wrong type** (`"students": "abc"` became an empty list and the class was created!) → the CLI serializes the parsed input again and rejects it with the JSON path if anything got lost
+  * `dotnet tool update` does not reinstall an installed version, and NuGet caches packages by version → `install-cli.sh` packs a unique `-dev.<timestamp>` version every time
+  * Kiota can't see the `code` extension member of Problem Details (not in the schema) → read from `AdditionalData`
+  * `save-*` does not require `--yes` although it removes what's missing from the document – the API contract; the skill covers it ("compare before saving")
+* Permissions: allow `Bash(grader:*)` (or `Bash(dotnet run --project GraderCli:*)`) in `.claude/settings.json`, and the agent works without prompts – but mind destructive commands
+* The skill's evaluation ran in parallel subagents against a **copy** of the database – the agent protected the development data without being told
+* Cost: 8a ~$4.50, 8b ~$3.50, 8c/8d ~$0.30 each – the "using" prompts are cheap because the investment was made in 8a/8b
+
+Learnings:
+
+* A CLI is the cheapest agent interface for an existing app: discoverable, scriptable, composable – and useful for humans too
+* Skill = the knowledge the CLI can't give: workflows, order of steps, pitfalls. Write it with skill-creator and test it with realistic tasks (with vs. without skill)
+* Contract first pays off again: the OpenAPI spec feeds a second generated client; a QA check keeps it in sync
+* .NET global tools make distribution easy; `dnx` runs them without installing
+* The shift: from "agent writes code" to "agent uses the app" – the same agent is developer (8a/8b) and user (8c/8d)
+
+Links:
+
+* [Kiota overview](https://learn.microsoft.com/openapi/kiota/overview), [Kiota .NET quickstart](https://learn.microsoft.com/openapi/kiota/quickstarts/dotnet)
+* [System.CommandLine](https://learn.microsoft.com/dotnet/standard/commandline/)
+* [.NET tools](https://learn.microsoft.com/dotnet/core/tools/global-tools), [Create a .NET tool](https://learn.microsoft.com/dotnet/core/tools/global-tools-how-to-create), [`dotnet tool exec` / `dnx`](https://learn.microsoft.com/dotnet/core/tools/dotnet-tool-exec)
+* [skill-creator](https://github.com/anthropics/skills/tree/main/skills/skill-creator), [Claude Code skills](https://code.claude.com/docs/en/skills)
