@@ -7,7 +7,7 @@ How to use this storyboard:
 * Every step has a **script** (copy & run in a terminal) and/or a **prompt** (copy & paste into your coding agent).
 * Start each prompt in a **fresh agent session** in the repository root (`grader/`).
 * Each step ends with a git commit. If a step goes wrong: `git reset --hard && git clean -fd` and re-run it.
-* Rehearsed with Claude Code (`claude -p`, Opus 5.5, effort medium). Durations below come from that rehearsal.
+* Rehearsed with Claude Code (`claude -p`, Opus 5.5, effort high – the same as on stage). Durations below come from that rehearsal.
 
 ## Prerequisites
 
@@ -133,7 +133,7 @@ Create a brief AGENTS.md in the repository root. Content:
 - .NET, Angular and other technologies used here might be newer than you expect. Do not rely on your training data for APIs, verify with current docs.
 - We use .NET 11 (currently a release candidate). NuGet packages that ship with .NET must match the SDK's major version, so prerelease versions are fine for them. Use the latest stable version for all other packages.
 - Use the installed skills to research up-to-date documentation. Priority:
-  1. Microsoft technologies incl. .NET, ASP.NET Core, xUnit: Microsoft Learn CLI (not MCP) from the microsoft-docs skill
+  1. Microsoft technologies incl. .NET, ASP.NET Core, xUnit: Microsoft Learn CLI (not MCP) from the microsoft-docs skill (it runs as a sub-agent: always pass your question as the skill's argument)
   2. Angular: angular-developer skill
   3. Other technologies (incl. NSubstitute): ctx7 CLI (not MCP) from the find-docs skill
   4. You may clone/pull GitHub repositories of used open source libraries into ~/github/<repo> if you need to inspect their code or docs included in the repo.
@@ -1096,3 +1096,25 @@ Links:
 * MCP Inspector: [CLI](https://modelcontextprotocol.io/docs/2026-07-28/tools/inspector/cli), [Protocol eras](https://modelcontextprotocol.io/docs/2026-07-28/tools/inspector/protocol-eras); [MCPJam](https://www.mcpjam.com/) ([GitHub](https://github.com/MCPJam/inspector)); [Claude Code MCP](https://code.claude.com/docs/en/mcp)
 * [Hexagonal architecture (Alistair Cockburn)](https://alistair.cockburn.us/hexagonal-architecture/)
 * Step 11: [Microsoft.Extensions.AI](https://learn.microsoft.com/dotnet/ai/microsoft-extensions-ai), [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/), [AG-UI](https://docs.ag-ui.com/)
+
+## What's next – authentication and authorization (experiments at home)
+
+Grader has no login yet: every endpoint, `/mcp` and the assistant are open to anyone who can reach the API. That was fine for a workshop on localhost, and it's the obvious next topic. It isn't part of the workshop day and it isn't rehearsed; here are ideas for your own experiments, in a sensible order.
+
+**1. Get the ready-made MCP auth demo running.** The workshop material contains a working, locally verified setup: [compose.yaml](compose.yaml) starts Keycloak 26.7.4 and imports the realm from [auth/workshop-realm.json](auth/workshop-realm.json) (realm `workshop`, user `demo`/`demo`, scope `mcp:tools`). `SimpleAuthDemoMcp/` is a two-file C# MCP server with a single `hello` tool that shows everything the MCP authorization spec (2026-07-28) asks of a server: a `401` with a `WWW-Authenticate` header that points to the protected resource metadata (RFC 9728), JWT validation (issuer, audience, expiry), a required scope and a check of the browser `Origin`. [README.md](README.md) walks through connecting with MCPJam. The interesting part: MCPJam isn't registered in Keycloak anywhere. It identifies itself with a Client ID Metadata Document (CIMD) that Keycloak fetches from `www.mcpjam.com`, and resource indicators bind the tokens to exactly this MCP server. Note that both Keycloak features are still experimental and that the demo runs on plain HTTP, which the spec only tolerates for local development.
+
+**2. Protect Grader's `/mcp`.** Move the pattern from `SimpleAuthDemoMcp/Program.cs` into GraderApi: `AddJwtBearer` plus `AddMcp` for the resource metadata, an authorization policy that requires `mcp:tools`, and `MapMcp("/mcp").RequireAuthorization(...)`. The Origin check also answers the question the agent asked at the end of step 10. The resource URL is the part that is easy to get wrong: change `http://localhost:7071/mcp` to `http://localhost:5100/mcp` consistently in the realm (resource client id, its `resource_url` attribute, the audience mapper), in the app and in MCPJam, then re-import the realm with `docker compose down -v && docker compose up -d --wait` (see the README). A good prompt would ask for a new tech docs article `auth.md` and an exemplary test with a self-issued test token, so the tests don't need a running Keycloak.
+
+**3. Protect the web app and the REST API.** The Angular app needs its own login: a public client in the realm (e.g. `grader-web`) with authorization code + PKCE, and GraderApi validates the tokens on `/api/*` and on the assistant endpoint. Two options worth comparing: the SPA holds the tokens itself (e.g. with an OIDC library for Angular), or a backend-for-frontend where GraderApi runs the login and the browser only gets a secure cookie. The latter keeps tokens out of the browser and is today's recommendation for SPAs. The REST API and `/mcp` are different resources: think about whether one token may be used for both or whether each gets its own audience.
+
+**4. The CLI and `grader mcp`.** The MCP authorization spec deliberately doesn't apply to stdio: a stdio server gets its credentials from the environment. So it's the CLI that has to log in when it calls the Web API. The OAuth device authorization grant (`grader login` shows a code, you confirm it in the browser, the CLI stores the token) fits command-line tools well, and Keycloak supports it. The Kiota client can attach the token through its authentication provider.
+
+**5. From authentication to authorization.** Once users are known, the traits of the shared tool catalog from step 11 pay off again: read-only tools could require `grader:read`, destructive ones `grader:write`, and `tools/list` could show each user only the tools they may call. The in-app agent calls the tools on behalf of the logged-in teacher, so it must never be able to do more than that teacher. A further step, "teachers only see their own classes", needs a change to the data model and is a good exercise in spec-driven development (step 5): spec first, then the prompt.
+
+**How to approach it with an agent:** the same way as in the workshop. Research first (the MCP authorization pages via [llms.txt](https://modelcontextprotocol.io/llms.txt), the Keycloak MCP guide, the SDK's `ProtectedMcpServer` sample), write down the decisions in a tech docs article, then give the agent a short prompt with exemplary tests. And use `SimpleAuthDemoMcp` as the working reference the agent can compare its solution with.
+
+Links:
+
+* MCP 2026-07-28: [Authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization), [Security best practices](https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices)
+* [Keycloak MCP authorization server guide](https://github.com/keycloak/keycloak/blob/26.7.4/docs/guides/securing-apps/mcp-authz-server.adoc), [C# SDK ProtectedMcpServer sample](https://github.com/modelcontextprotocol/csharp-sdk/tree/v2.2.0/samples/ProtectedMcpServer)
+* RFCs: [9728 Protected Resource Metadata](https://www.rfc-editor.org/rfc/rfc9728), [8707 Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707), [8628 Device Authorization Grant](https://www.rfc-editor.org/rfc/rfc8628); [OAuth 2.0 for Browser-Based Applications](https://datatracker.ietf.org/doc/draft-ietf-oauth-browser-based-apps/) (backend-for-frontend)
