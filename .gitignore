@@ -2,4 +2,15 @@
 **/obj/
 .DS_Store
 .playwright-mcp/
-rehearsal/
+# Rehearsal: harness, snapshot and gzipped logs are tracked; the working repo and the key are not
+rehearsal/*
+!rehearsal/README.md
+!rehearsal/prompts/
+!rehearsal/scripts/
+!rehearsal/snapshot/
+!rehearsal/logs/
+rehearsal/logs/*
+!rehearsal/logs/*.gz
+!rehearsal/logs/*.out
+!rehearsal/grader.bundle
+rehearsal/openrouter.env
