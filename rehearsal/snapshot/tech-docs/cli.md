@@ -1,6 +1,6 @@
 # Command-Line Interface (CLI)
 
-`GraderCli` is the `grader` command, a CLI for the Grader Web API. Its main users are AI agents doing tasks for a teacher; humans use it too. `grader mcp` runs the same use cases as MCP server (see [MCP server](#mcp-server)).
+`GraderCli` is the `grader` command, a CLI for the Grader Web API. Its main users are AI agents doing tasks for a teacher; humans use it too. `grader mcp` runs the same use cases as MCP server (see [MCP server](#mcp-server) and [mcp.md](mcp.md)).
 
 ## Approach
 
@@ -39,31 +39,12 @@ scripts/generate-cli-client.sh --check   # fails if the committed client is out 
 
 ## MCP server
 
-`grader mcp` runs Grader as MCP server over stdio (JSON-RPC on stdin/stdout) for AI agents whose host prefers tools over a shell. The concepts and the protocol are documented at https://modelcontextprotocol.io/llms.txt; we support spec revision 2026-07-28. It uses the official C# SDK (`ModelContextProtocol.Core`, no hosting or DI package needed); `GraderCli/Mcp/McpServerCommand.cs` configures it.
+`grader mcp` runs Grader as MCP server over stdio (JSON-RPC on stdin/stdout). Its tools are the same as those of the Web API's MCP server; the shared design, the differences and how to register it in a client are in [mcp.md](mcp.md). This section covers the CLI side. It uses `ModelContextProtocol.Core` (no hosting or DI package needed); `GraderCli/Mcp/McpServerCommand.cs` configures it.
 
-- **One tool per command, from the same `UseCase`:** named `<area>_<verb>` (`classes_get`, `demo_data_replace`), same description, ids as integer parameters in camelCase (`classId`), same API call (`ApiCaller`). Tools are listed in the catalog's order (deterministic, for clients caching the list), which is why the server uses list/call handlers instead of the SDK's tool collection (a dictionary).
+- **One tool per command, from the same `UseCase`** (`GraderCli/Mcp/UseCaseTool.cs`): name, description, ids, annotations (from the effect) and the API call (`ApiCaller`). Tools are listed in the catalog's order.
 - **Documents inline or as file:** tools that save take the document inline (`document`, a JSON object) or as path of a local JSON file (`file`), exactly one of them. The schema of `document` is the API's request schema from the OpenAPI spec (embedded into the CLI, see `DocumentSchemas`) with all `$ref`s inlined, so the model sees the exact shape incl. required nulls. Inline documents are sent as raw JSON text, never re-serialized (nulls).
-- **Annotations instead of `--yes`:** read tools are `readOnlyHint`; `save`, `delete` and `demo-data replace` are `destructiveHint` (save replaces lists and removes entries), `create` is not; `save` is `idempotentHint`; all are `openWorldHint: false`. Asking the user before destructive calls is the MCP host's job.
-- **Errors are tool errors** (`isError: true`) whose text is the same JSON as the CLI's `--json` errors (`code`, `message`, `status`, `errors`), so the model can correct its call. This includes API errors, invalid arguments (`invalid-input`, e.g. unknown parameters or a missing id) and an unreachable API. Only unknown tool names are protocol errors.
-- **Protocol revision:** the SDK negotiates 2026-07-28 via `server/discover` and per-request `_meta`; the server is not pinned, so clients on older revisions still work through the SDK's `initialize` support. We write no code for older revisions, and the tests use a client pinned to 2026-07-28.
-- **API URL:** `--api-url` or `GRADER_API_URL` of the server process, as for commands. The server has no state between tool calls (stateless like the protocol) and creates an HTTP client per call.
-
-### Registering the server in an MCP client
-
-The client launches `grader mcp` as a subprocess. Install the global tool first (see below); set `GRADER_API_URL` if the API does not run on the default URL.
-
-```bash
-claude mcp add grader -- grader mcp                                           # Claude Code (current project)
-claude mcp add grader -e GRADER_API_URL=http://localhost:5200 -- grader mcp   # another API
-```
-
-Clients configured with JSON (e.g. `.mcp.json` of Claude Code, Claude Desktop) use:
-
-```json
-{ "mcpServers": { "grader": { "command": "grader", "args": ["mcp"], "env": { "GRADER_API_URL": "http://localhost:5100" } } } }
-```
-
-During development without installing: build once and use `"command": "dotnet", "args": ["run", "--no-build", "--project", "<repo>/GraderCli", "--", "mcp"]`. Without `--no-build`, every start builds (slow startup, and build output would go to stdout). Test interactively with the MCP Inspector (`npx @modelcontextprotocol/inspector grader mcp`).
+- **Errors** are the same JSON as the CLI's `--json` errors, incl. the CLI's own codes: invalid arguments (`invalid-input`, e.g. unknown parameters or a missing id) and an unreachable API.
+- **API URL:** `--api-url` or `GRADER_API_URL` of the server process, as for commands. The server creates an HTTP client per call.
 
 ## Skill for teacher tasks
 

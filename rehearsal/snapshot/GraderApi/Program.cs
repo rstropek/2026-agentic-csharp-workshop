@@ -4,6 +4,8 @@ using GraderApi.ClassManagement;
 using GraderApi.DemoData;
 using GraderApi.ErrorHandling;
 using GraderApi.Exams;
+using GraderApi.Mcp;
+using GraderApi.Validation;
 using GraderLogic.ClassManagement;
 using GraderLogic.Data;
 using GraderLogic.DemoData;
@@ -38,6 +40,13 @@ builder.Services.AddScoped<IClassManagementService, ClassManagementService>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<IDemoDataService, DemoDataService>();
 
+// The use cases as tools for AI agents, served by the MCP server at /mcp (see tech-docs/mcp.md).
+builder.Services.AddScoped<RequestValidator>();
+builder.Services.AddScoped<ClassManagementTools>();
+builder.Services.AddScoped<ExamTools>();
+builder.Services.AddScoped<DemoDataTools>();
+builder.Services.AddGraderMcpServer();
+
 var app = builder.Build();
 
 // Create or update the database schema on startup, but not during build-time OpenAPI generation (see api-client.md).
@@ -60,6 +69,9 @@ var api = app.MapGroup("/api");
 api.MapClassManagementEndpoints();
 api.MapExamEndpoints();
 api.MapDemoDataEndpoints();
+
+// The MCP server is no REST endpoint for the API clients, so it is not part of the OpenAPI spec.
+app.MapMcp("/mcp").ExcludeFromDescription();
 
 // Unknown API routes must return 404 instead of falling through to the SPA's index.html.
 api.MapFallback(() => TypedResults.NotFound()).ExcludeFromDescription();

@@ -17,12 +17,7 @@ public sealed class GraderLogicExceptionHandler(IProblemDetailsService problemDe
             return false;
         }
 
-        var status = logicException switch
-        {
-            NotFoundException => StatusCodes.Status404NotFound,
-            ConflictException => StatusCodes.Status409Conflict,
-            _ => StatusCodes.Status400BadRequest,
-        };
+        var status = GetStatusCode(logicException);
         httpContext.Response.StatusCode = status;
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
@@ -36,4 +31,14 @@ public sealed class GraderLogicExceptionHandler(IProblemDetailsService problemDe
             },
         });
     }
+
+    /// <summary>
+    /// The HTTP status code of a domain error, also reported by the MCP tools (see tech-docs/mcp.md).
+    /// </summary>
+    public static int GetStatusCode(GraderLogicException exception) => exception switch
+    {
+        NotFoundException => StatusCodes.Status404NotFound,
+        ConflictException => StatusCodes.Status409Conflict,
+        _ => StatusCodes.Status400BadRequest,
+    };
 }

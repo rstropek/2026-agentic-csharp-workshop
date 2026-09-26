@@ -11,10 +11,10 @@ are compositions of a few commands. This skill covers how to compose them safely
 
 ## Before you start
 
-- **CLI or MCP tools:** `grader mcp` runs the same use cases as MCP server. If its tools are available to you
-  (`classes_get`, `exams_save`, ... = `grader <area> <verb>`), you may use them instead of the CLI: same
-  descriptions, ids as parameters (`classId`), documents inline as `document` (or a JSON file path as `file`), the
-  API's JSON as result and errors as tool errors with the same error codes. Destructive tools need no `--yes`; the
+- **CLI or MCP tools:** `grader mcp` and the Web API itself (`/mcp`) run the same use cases as MCP server. If their
+  tools are available to you (`classes_get`, `exams_save`, ... = `grader <area> <verb>`), you may use them instead of
+  the CLI: same descriptions, ids as parameters (`classId`), documents inline as `document` (`grader mcp` also takes a
+  JSON file path as `file`), the API's JSON as result and errors as tool errors with the same error codes. Destructive tools need no `--yes`; the
   rules under "Destructive commands" apply all the same. Everything else in this skill applies to both.
 - **Invocation:** check with `command -v grader` whether the global tool is installed. Otherwise, in the repository
   root, build once (`dotnet build GraderCli`) and then use `dotnet run --no-build --project GraderCli -- <args>`:

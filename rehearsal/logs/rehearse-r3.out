@@ -405,3 +405,38 @@ If you only count students with all four results, the three lowest are **Abraham
 
 I worked out these averages by hand from the 40 Mathematics exams across the 10 classes, since the app has no statistics feature. I didn't change any data.
 --- after 9c (expected: no changes)
+committed step 9c
+=== step 10 (18:37:00)
+Duration: 814s
+success turns: 79 cost: 5.269001000000002
+The Web API now runs an MCP server at `/mcp`. It offers the same 13 tools as `grader mcp`, with the same names, descriptions, annotations, order and server instructions. The full `scripts/qa.sh` run passed (9/9, including E2E), and I committed it to main as `4e3d03b`.
+
+**How it's built**
+- **Plain tool classes**, one per area next to the endpoints: `ClassManagementTools`, `ExamTools`, `DemoDataTools`. They are methods with `[Description]` and no MCP-specific parameters, logic or attributes. Like the endpoints, they just call the `GraderLogic` services.
+- **Validation:** no endpoint filter runs for tools, so methods that take a document call a new `RequestValidator`. It uses the same validation metadata as the endpoints, so the rules and error keys (e.g. `Students[0].LastName`) are identical.
+- **MCP-specific parts** are all in `GraderApi/Mcp`:
+  - `ToolCatalog` holds tool names, annotations and order.
+  - `ToolErrors` turns errors into tool errors in the same JSON shape as the CLI (`code`, `message`, `status`, `errors`), using the API's error codes.
+  - `McpServerSetup` sets up the stateless server.
+- **JSON:** tools read arguments and write results with the endpoints' JSON options. The SDK's defaults would drop `null` values and accept numbers as strings, which would break get → edit → save.
+- **OpenAPI:** `/mcp` is excluded from the spec, so the Angular and CLI API clients don't change.
+
+**Tests**
+- A `classes_create` call against `/mcp` in memory, with a real database and a document containing `"id": null`.
+- A mocked `duplicate-student` business rule violation that comes back as a tool error with its code and status 400.
+- One extra test I added: it compares the tool lists of both servers, so their names, descriptions and annotations can't drift apart. I checked that it fails when one description changes.
+
+**Where the two servers differ** (documented in `mcp.md`):
+- The API's tools take documents inline only; there's no `file` parameter.
+- They use the API's error codes (`invalid-request`, `validation-failed`) instead of the CLI's.
+- They ignore unknown parameters instead of rejecting them.
+- Unexpected errors come back as the SDK's generic tool error, without details, and are logged.
+
+**Things to know**
+- **No authentication:** like the rest of the API, anyone who can reach it can call every tool, including `demo_data_replace`, which deletes all data.
+- **`GET /mcp` outside Development returns the Angular app's `index.html` with 200.** The SPA fallback answers because a stateless server only accepts `POST`. Only older-revision clients send `GET`, so I left it as is and listed it as a gotcha in `mcp.md`.
+- **SDK description suffix:** the SDK appends "Returns: …" to tool descriptions. `ToolCatalog` removes it so the descriptions match the CLI's.
+
+**Docs:** the new `tech-docs/mcp.md` covers both servers, how they differ, and how to connect a client (e.g. `claude mcp add --transport http grader http://localhost:5100/mcp`). I moved the shared MCP
+--- after step10: branch=main head=4e3d03b Add MCP server to the Web API at /mcp
+OK step10

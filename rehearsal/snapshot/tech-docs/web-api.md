@@ -19,6 +19,7 @@ Endpoint (GraderApi)  →  use-case service interface (GraderLogic)  →  DbCont
 - **Use-case services** live in `GraderLogic`, one per use-case area, behind an interface, registered in DI (scoped, like the `DbContext`). Endpoint unit tests mock the interface (NSubstitute); service tests run against in-memory SQLite (see `database.md`).
 - Services own the queries, the business rules and the transaction boundary.
 - Folders per use-case area in both projects: `GraderLogic/<Area>/` (interface, service, request/response records), `GraderApi/<Area>/` (one `<Area>Endpoints.cs` with a `Map<Area>Endpoints` extension, called in `Program.cs`).
+- **Tools are the second entry point** next to endpoints: `GraderApi/<Area>/<Area>Tools.cs` offers the same use cases as plain methods for AI agents, served by the MCP server at `/mcp` (see [mcp.md](mcp.md)). Like endpoints, they only call the service; they validate documents with `RequestValidator`, since no endpoint filter runs for them.
 
 ## Data access
 
@@ -84,7 +85,7 @@ When a use case edits a parent together with its children as one unit, the clien
 
 - **SQLite cannot translate queries that need SQL `APPLY`**, e.g. a subquery that references the outer row inside a nested collection projection (a per-student result of an exam inside the exam's projection). EF Core only fails at runtime (`InvalidOperationException`), so every read query needs a test or a manual call. Split such reads into two queries (see `ExamService.GetExamAsync`).
 - **Validation error keys are C# member paths** (`Students[0].LastName`), not the camelCase JSON names.
-- **Validation only runs for types reachable from endpoint handler signatures** (the source generator runs in `GraderApi` and walks them, incl. types from `GraderLogic`). Missing metadata fails silently; test at least one invalid request per request type.
+- **Validation only runs for types reachable from endpoint handler signatures** (the source generator runs in `GraderApi` and walks them, incl. types from `GraderLogic`). Missing metadata fails silently for endpoints (`RequestValidator` throws); test at least one invalid request per request type.
 - **Validation problem details only get a `code`** because `AddProblemDetails` is registered: the validation filter then writes through `IProblemDetailsService`, which applies `CustomizeProblemDetails`.
 - **The database schema is migrated on API startup** (`Program.cs`), skipped during build-time OpenAPI generation. In tests, the schema therefore only exists after the test host has started (`GraderApiFactory.CreateDbContext` takes care of it).
 - **Text sorting uses SQLite's `BINARY` collation**: case-sensitive, non-ASCII letters (e.g. umlauts) after `z`.
