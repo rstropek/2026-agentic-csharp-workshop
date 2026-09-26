@@ -304,3 +304,22 @@ Class 1D and its first Mathematics test are now in Grader.
 
 Separately, the Gmail, Google Calendar and Google Drive connectors need to be authorized in your claude.ai connector settings before they can be used, and Leo Wiki failed to connect this session. None of them were needed here.
 --- after 8c (expected: no changes)
+committed step 8c
+=== step 8d (18:11:35)
+Duration: 69s
+success turns: 8 cost: 0.29345780000000005
+In 2025/26, the students with the lowest Mathematics averages are Natalie Olson, Alicia Collier, and then Ricardo Grimes and Trent Marks tied for third:
+
+| Rank | Student | Class | Average | Results |
+|---|---|---|---|---|
+| 1 | Natalie Olson | 2C | **54.8 %** | 2 of 4 exams (no result for 2025-10-08 and 2026-05-25) |
+| 2 | Alicia Collier | 2A | **61.5 %** | 3 of 4 exams (no result for 2026-03-09) |
+| 3 (tie) | Ricardo Grimes | 2C | **62.45 %** | 4 of 4 exams |
+| 3 (tie) | Trent Marks | 4B | **62.45 %** | 2 of 4 exams (no result for 2026-03-09 and 2026-05-25) |
+
+- **Tie for third:** Grimes and Marks have exactly the same average. Vanessa Hilll (3B) is just behind them at 62.6 %, with all 4 results.
+- **Averages are based on fewer exams for some students:** Olson and Marks each have only 2 of 4 results, and Collier has 3. With just two exams, one more result could move them a lot. Grimes and Hilll have all four, so their places are the most reliable.
+- **How I calculated it:** Each average uses only the exams where the student has a result; exams with no result count as no result, not as 0 %. Every class had 4 Mathematics exams.
+
+I only read data and didn't change anything. I ran the CLI locally against the development API.
+--- after 8d (expected: no changes)
