@@ -1,0 +1,34 @@
+=== step 11a (18:57:25)
+Duration: 402s
+success turns: 35 cost: 2.1865346
+The tools are now a shared `AIFunction` catalog that doesn't depend on MCP, and `/mcp` just adapts it. The tests and `scripts/qa.sh` pass (9/9), and the change is committed to main as `39d289f`.
+
+**How it's set up:**
+- **One place per tool:** each tool is its method in the tool class. `[Tool("classes_get", ToolEffect.Read)]` gives the name and what the tool does (read, create, replace or delete). The existing `[Description]` on the method and its parameters gives the description and parameters.
+- **`ToolCatalog`** (new, in `GraderApi/Tools`) turns those methods into `CatalogTool`s using `AIFunctionFactory`. A `CatalogTool` is an `AIFunction` with the traits `IsReadOnly`, `IsDestructive` and `IsIdempotent`, which are worked out from the effect.
+  - The tool class instance comes from the services passed with each call, so the in-app agent passes its own request scope.
+  - Results use the endpoints' JSON options, and confirmation texts stay plain text.
+- **MCP server:** `McpServerSetup` wraps each catalog tool, turns its traits into MCP annotations and keeps the existing error handling. The old `Mcp/ToolCatalog.cs` is deleted, so the MCP side has no tool definitions of its own.
+- I added an explicit reference to `Microsoft.Extensions.AI.Abstractions` 10.10.1 (the latest stable). Before, it only came in through the MCP package.
+
+**Checking that `/mcp` didn't change:** before refactoring, I saved a snapshot from a temporary test. It covered the full tool list (with input schemas and annotations), the server instructions, and a set of calls:
+- successful results, including explicit nulls and non-ASCII text
+- the confirmation texts
+- validation, business-rule and invalid-request errors
+- an unexpected exception and an unknown tool
+
+After the refactoring the snapshot was byte-for-byte identical. I deleted the temporary test before committing.
+
+**Two things to know for the agent:**
+- By default, `AIFunctionFactory` turns `string` results into JSON strings, so `/mcp` would have sent `"Deleted class 7."` with quotes. The catalog keeps texts as they are.
+- Reflection doesn't guarantee the order of methods, so the catalog sorts them by declaration order. The existing test comparing `/mcp` with `grader mcp` would catch a wrong order.
+
+Both are in the gotchas in `tech-docs/mcp.md`.
+
+**Test and docs:**
+- **Test:** `GraderTests/Api/ToolCatalogTests.cs` calls `classes_get` directly as an `AIFunction`, without MCP. It passes the API's services from a scope and checks the traits and the returned JSON.
+- **Docs:** `tech-docs/mcp.md` has a new section on the tool catalog and a shorter section on the MCP server. I also updated the references in `AGENTS.md` (the API Changes checklist), `testing.md` and `web-api.md`.
+
+Separately: the Gmail, Google Calendar and Google Drive connectors need to be authorized in your claude.ai connector settings before they can be used. This task didn't need them.
+--- after step11a: branch=main head=39d289f Extract the API's MCP tools into an MCP-independent tool catalog
+OK step11a

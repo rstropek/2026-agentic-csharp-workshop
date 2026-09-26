@@ -5,6 +5,7 @@ using GraderApi.DemoData;
 using GraderApi.ErrorHandling;
 using GraderApi.Exams;
 using GraderApi.Mcp;
+using GraderApi.Tools;
 using GraderApi.Validation;
 using GraderLogic.ClassManagement;
 using GraderLogic.Data;
@@ -40,11 +41,9 @@ builder.Services.AddScoped<IClassManagementService, ClassManagementService>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<IDemoDataService, DemoDataService>();
 
-// The use cases as tools for AI agents, served by the MCP server at /mcp (see tech-docs/mcp.md).
+// The use cases as tools for AI agents (tool catalog), served by the MCP server at /mcp (see tech-docs/mcp.md).
 builder.Services.AddScoped<RequestValidator>();
-builder.Services.AddScoped<ClassManagementTools>();
-builder.Services.AddScoped<ExamTools>();
-builder.Services.AddScoped<DemoDataTools>();
+builder.Services.AddGraderTools();
 builder.Services.AddGraderMcpServer();
 
 var app = builder.Build();

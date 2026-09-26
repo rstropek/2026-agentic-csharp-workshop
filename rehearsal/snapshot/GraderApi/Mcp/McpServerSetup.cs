@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http.Json;
+using GraderApi.Tools;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol;
 using ModelContextProtocol.AspNetCore;
@@ -9,6 +9,7 @@ namespace GraderApi.Mcp;
 
 /// <summary>
 /// The MCP server of the Web API (Streamable HTTP, stateless), with the tools of <c>grader mcp</c> (see tech-docs/mcp.md).
+/// It offers the tools of the <see cref="ToolCatalog"/> and only adapts them to MCP (annotations, tool errors).
 /// </summary>
 public static class McpServerSetup
 {
@@ -22,7 +23,7 @@ public static class McpServerSetup
         + "A percentage of null means no result, not 0 %. Errors are tool errors with the API's error code.";
 
     /// <summary>
-    /// Adds the MCP server. The tool classes must be registered as services.
+    /// Adds the MCP server. The tool catalog must be registered as service (<see cref="ToolSetup.AddGraderTools"/>).
     /// </summary>
     public static IServiceCollection AddGraderMcpServer(this IServiceCollection services)
     {
@@ -35,15 +36,11 @@ public static class McpServerSetup
     /// Configures the server with list/call handlers instead of the SDK's tool collection (a dictionary), so tools are
     /// always listed in the catalog's order, like <c>grader mcp</c> does.
     /// </summary>
-    /// <param name="jsonOptions">
-    /// The JSON options of the endpoints: tools read arguments and write results like the endpoints read requests and
-    /// write responses (e.g. required constructor parameters, explicit nulls).
-    /// </param>
-    private sealed class ConfigureMcpServerOptions(IOptions<JsonOptions> jsonOptions) : IConfigureOptions<McpServerOptions>
+    private sealed class ConfigureMcpServerOptions(ToolCatalog catalog) : IConfigureOptions<McpServerOptions>
     {
         public void Configure(McpServerOptions options)
         {
-            var tools = ToolCatalog.Create(jsonOptions.Value.SerializerOptions);
+            var tools = catalog.Tools.Select(CreateMcpTool).ToList();
             options.ServerInfo = new()
             {
                 Name = "grader",
@@ -67,5 +64,23 @@ public static class McpServerSetup
                 }
             };
         }
+    }
+
+    /// <summary>
+    /// Adapts a tool of the catalog to MCP: its traits become annotations, like those of <c>grader mcp</c>.
+    /// </summary>
+    private static McpServerTool CreateMcpTool(CatalogTool tool)
+    {
+        var mcpTool = McpServerTool.Create(tool, new McpServerToolCreateOptions
+        {
+            ReadOnly = tool.IsReadOnly,
+            // Only meaningful for tools that change data (see the MCP specification), so omitted for read-only tools.
+            Destructive = tool.IsReadOnly ? null : tool.IsDestructive,
+            Idempotent = tool.IsReadOnly ? null : tool.IsIdempotent,
+            OpenWorld = false,
+        });
+        // Only the method's description, like grader mcp: the SDK appends the description of the result type.
+        mcpTool.ProtocolTool.Description = tool.Description;
+        return mcpTool;
     }
 }

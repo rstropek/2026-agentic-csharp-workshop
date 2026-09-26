@@ -53,7 +53,7 @@ Do not suppress findings (`#pragma`, `NoWarn`, `biome-ignore`, severity changes)
 Every structural API change (endpoints, parameters, request/response shapes, status codes) includes, in the same change:
 
 - regenerating the CLI's API client with `scripts/generate-cli-client.sh` (never edit `GraderCli/ApiClient` by hand), then adapting the CLI's use cases (each is a command and an MCP tool): one per new use case, updated descriptions (incl. error codes) and examples, and the `grader-cli` skill if teacher workflows change. `scripts/qa.sh` fails if the client is out of date.
-- adapting the API's MCP tools (`GraderApi/<Area>/<Area>Tools.cs`, `GraderApi/Mcp/ToolCatalog.cs`): the same name, description and annotations as the CLI's tool (a test compares both servers, see `tech-docs/mcp.md`).
+- adapting the API's tool catalog (tool classes `GraderApi/<Area>/<Area>Tools.cs`, used by the MCP server at `/mcp`): the same name, description and effect as the CLI's tool (a test compares both MCP servers, see `tech-docs/mcp.md`).
 - committing the regenerated OpenAPI spec (any build of `GraderApi` updates it, see `tech-docs/api-client.md`).
 
 ## Technology Versions
@@ -81,7 +81,7 @@ Use the installed skills to research up-to-date documentation. Priority:
 - [database.md](tech-docs/database.md): SQLite/EF Core data model, where constraints are defined, migrations (commands, design-time factory), test data generator, and database gotchas.
 - [web-api.md](tech-docs/web-api.md): Web API architecture: use-case endpoints and services, data access, error codes and Problem Details, validation, HTTP/OpenAPI conventions, and API gotchas.
 - [cli.md](tech-docs/cli.md): the `grader` CLI: command design (mirrors the API), Kiota client and its generation, output/errors/exit codes for agents, the CLI side of the MCP server (`grader mcp`), building, installing and updating the global tool, CLI gotchas.
-- [mcp.md](tech-docs/mcp.md): the two MCP servers (`grader mcp` over stdio, the Web API at `/mcp` over Streamable HTTP): shared tool design, how they differ, the API's plain tool classes, connecting a client, MCP gotchas.
+- [mcp.md](tech-docs/mcp.md): the two MCP servers (`grader mcp` over stdio, the Web API at `/mcp` over Streamable HTTP): shared tool design, how they differ, the API's MCP-independent tool catalog (`AIFunction`s), connecting a client, MCP gotchas.
 - [ui.md](tech-docs/ui.md): Web UI: design system (tokens, global CSS classes, base components and services), UI design decisions (theme, school year, loading/error states, editors, validation, confirmation), and UI gotchas.
 
 Maintain the tech docs as part of every change:

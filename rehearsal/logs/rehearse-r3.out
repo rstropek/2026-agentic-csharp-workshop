@@ -440,3 +440,33 @@ The Web API now runs an MCP server at `/mcp`. It offers the same 13 tools as `gr
 **Docs:** the new `tech-docs/mcp.md` covers both servers, how they differ, and how to connect a client (e.g. `claude mcp add --transport http grader http://localhost:5100/mcp`). I moved the shared MCP
 --- after step10: branch=main head=4e3d03b Add MCP server to the Web API at /mcp
 OK step10
+committed step 10
+=== step 11a (18:50:35)
+Duration: 362s
+success turns: 33 cost: 1.7339718000000004
+The refactoring is committed to `main` as `35f001a`. `scripts/qa.sh` passes (17 unit and 22 integration tests), and `/mcp` offers and runs exactly the same tools as before.
+
+**What changed**
+- **One place per tool:** `GraderApi/Tools/ToolCatalog.cs` defines each tool once: its name, the tool method (description and parameters come from its `[Description]` attributes), what it does to the data (read, create, replace or delete), and the order. It is registered as a singleton service, so the agent in the next session can inject it.
+- **Tools are `AIFunction`s:** each tool is a `GraderTool` (`GraderApi/Tools/GraderTool.cs`), which wraps the `AIFunction` and has the traits `IsReadOnly`, `IsDestructive` and `IsIdempotent`. It can go straight into a chat client's tool list. If the agent later wraps a tool (for example to ask for approval), the traits are still reachable with `GetService<GraderTool>()`.
+- **The MCP server has no tool definitions of its own:** `McpServerSetup` wraps each catalog tool, turns its traits into MCP annotations, and still turns errors into tool errors. `GraderApi/Mcp/ToolCatalog.cs` is deleted.
+- **Same results for every caller:** the catalog writes results as JSON with the endpoints' settings, and confirmation texts stay plain text. It also stops the MCP SDK from adding "Returns: …" to descriptions, so the old workaround for that is gone.
+- I added an explicit reference to `Microsoft.Extensions.AI.Abstractions` 10.10.1 (latest stable). Before, it only came in through the MCP package, at 10.8.3.
+
+**How I checked it's a pure refactoring:** before the change, a temporary test saved the full `/mcp` tool list (names, descriptions, input schemas, annotations) and the output of several calls: a success, a not-found error, a missing argument, a wrong type, a delete confirmation, a failed validation and a null document. After the change the output was byte-identical. I deleted that test before committing.
+
+**New test:** `GraderTests/Api/ToolCatalogTests.cs` takes `classes_get` from the catalog and calls it as an `AIFunction` without MCP, with the class-management service mocked. It checks the returned JSON and that the tool is read-only.
+
+**Docs:** I rewrote the Web API server section and a gotcha in `tech-docs/mcp.md`. I also changed one line each in `tech-docs/web-api.md` and `tech-docs/testing.md`, and updated the file paths under "API Changes" in `AGENTS.md`.
+
+**Worth knowing:**
+- There was no `GraderApi/Tools` folder. The tool classes live next to their endpoints (`GraderApi/<Area>/<Area>Tools.cs`), which the docs describe as intended, so I left them there. The new `GraderApi/Tools` folder holds only the catalog.
+- **For the in-app agent:** calling a tool needs the services of a scope, such as the HTTP request's services, because that's where the tool class and database context come from. A chat client configured with the app's root services would fail with scope validation turned on, so the agent needs to pass request-scoped serv
+--- after step11a: branch=main head=35f001a Move API tools into an MCP-independent tool catalog (AIFunction)
+OK step11a
+committed step 11a
+=== step 11b (18:56:37)
+claude exited with 143
+Duration: 33s
+None turns: None cost: None
+
