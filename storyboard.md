@@ -15,7 +15,35 @@ How to use this storyboard:
 * Node.js 24 LTS + npm
 * Git, bash/zsh (macOS, Linux, WSL or Git Bash)
 * A coding agent that supports `AGENTS.md` and skills (e.g. Claude Code, GitHub Copilot, Codex)
-* For step 7: a browser the agent can control (e.g. Chrome with [Claude in Chrome](https://claude.com/chrome), `claude --chrome`). Set the browser zoom to **100%** and make the window at least 1920 px wide – the UI is designed for Full HD, and with a different zoom the agent has to emulate the viewport to compare it with the mockups
+* For steps 7 and 11c: a browser the agent can control (e.g. Chrome with [Claude in Chrome](https://claude.com/chrome), `claude --chrome`). Set the browser zoom to **100%** and make the window at least 1920 px wide – the UI is designed for Full HD, and with a different zoom the agent has to emulate the viewport to compare it with the mockups. If the window can't be resized to 1920×1080 (e.g. maximized on a larger screen), the agent takes the exact screenshots with Playwright instead
+* For step 11: an [OpenRouter](https://openrouter.ai) API key (model `z-ai/glm-5.3-flash`)
+
+## Timing (rehearsal, Opus 5.5 effort high)
+
+Wall-clock time per prompt in the last full rehearsal (2026-09-26). Every step builds on the previous one, so prompts can't run in parallel with each other – but they can run while you discuss: start the prompt, then walk through its design decisions, the previous step's result or the concepts. Plan the long ones (≥ 15 min) around breaks.
+
+| Step | Prompt | Time | Cost | Plan |
+| --- | --- | ---: | ---: | --- |
+| 1 | script: app skeleton | ~1 min | – | live |
+| 2 | skills script + AGENTS.md | ~1 min | $0.25 | live |
+| 3 | connect the projects | 13 min | $3.84 | while discussing |
+| 4 | QA baseline | 9 min | $2.66 | while discussing |
+| 5 | database (spec-driven) | 9.5 min | $2.56 | while discussing |
+| 6 | Web API (architecture first) | 13.5 min | $4.28 | while discussing |
+| 7a | UI foundation + classes | 22 min | $9.36 | **break** |
+| 7b | Exams UI | 19.5 min | $7.98 | **break** |
+| 8a | CLI | 19 min | $5.65 | **break** |
+| 8b | skill | 6.5 min | $3.26 | while discussing |
+| 8c / 8d | teacher prompts (CLI) | 40 s / 70 s | $0.30 / $0.29 | live |
+| 9a | stdio MCP server | 22 min | $5.66 | **break** |
+| 9b / 9c | teacher prompts (MCP only) | 24 s / 1.5 min | $0.27 / $0.80 | live |
+| 10 | HTTP MCP server | 13.5 min | $5.27 | while discussing |
+| 11a | shared tool catalog | 6.5 min | $2.19 | while discussing |
+| 11b | agent + AG-UI endpoint | 10 min | $3.45 | while discussing |
+| 11c | Assistant area (UI) | 20 min | $8.11 | **break** |
+| | **total** | **~3 h 10 min** | **~$66** | |
+
+Fallback (e.g. no internet): the rehearsal's Grader repository incl. a tag per step is in `rehearsal/grader.bundle` – `git clone rehearsal/grader.bundle grader && cd grader && git reset --hard step7b` continues after step 7b without running its prompt (see [rehearsal/README.md](rehearsal/README.md)).
 
 ---
 
@@ -39,7 +67,7 @@ dotnet new gitignore
 dotnet new sln -n Grader
 
 dotnet new classlib -n GraderLogic -o GraderLogic
-dotnet new webapi   -n GraderApi   -o GraderApi
+dotnet new webapi   -n GraderApi   -o GraderApi   --kestrelHttpPort 5100 --kestrelHttpsPort 7100
 dotnet new xunit    -n GraderTests -o GraderTests --xunit-version v3
 dotnet sln add GraderLogic GraderApi GraderTests
 
@@ -93,6 +121,7 @@ Learnings:
   * Packages that follow the .NET release train (`ApiDescription.Server`, `Mvc.Testing`) need `--prerelease` while .NET 11 is in RC
   * `ng new` creates its own Git repo unless `--skip-git`; `--ai-config=none` and `--interactive=false` avoid prompts
   * Instead of `--ai-config`, we download the Angular team's [best-practices.md](https://angular.dev/assets/context/best-practices.md) as `GraderWeb/AGENTS.md`: nested `AGENTS.md` files apply to their folder, so the Angular rules only load when the agent works in the frontend
+  * `dotnet new webapi` picks random ports → `--kestrelHttpPort`/`--kestrelHttpsPort` (not shown in `--help`) pin them, so the API is always on http://localhost:5100 and later steps (proxy, CLI, MCP) can rely on it
   * `dotnet sln`/`dotnet new sln` creates `.slnx` (XML solution format) by default
   * .NET 10+ noun-first CLI syntax: `dotnet package add`, `dotnet reference add`
 
@@ -141,7 +170,7 @@ Create a brief AGENTS.md in the repository root. Content:
 Commit the changes (including installed skills) directly to main.
 ```
 
-Rehearsal: ~30 s.
+Rehearsal: 30 s (script ~1 min), $0.25.
 
 Learnings:
 
@@ -161,6 +190,7 @@ Learnings:
   * Claude Code reads `AGENTS.md` natively (built-in [agents-md](https://github.com/anthropics/claude-code/tree/main/mods/agents-md) plugin, `/config` → "Project instructions")
   * Default mode: `AGENTS.md` is loaded only if the project has **no** `CLAUDE.md` → don't add a `CLAUDE.md` next to it (or `@AGENTS.md`-import it)
 * Gotcha: `microsoft-docs` prefers the Learn MCP server; our `AGENTS.md` overrides this with "CLI, not MCP"
+* Gotcha: `microsoft-docs` runs as a forked sub-agent (`context: fork`). Invoked without an argument, it gets no question and returns nothing useful – this happened in earlier rehearsals, hence the hint in the prompt
 
 Links:
 
@@ -201,25 +231,18 @@ Goal: add super simple content to smoke-test the project setup end to end (nothi
 - Verify that all tests pass and the project is in a clean state, then commit directly to main.
 ```
 
-Rehearsal: 5–7.5 min in two runs, no struggles. The agent read the Angular skill references and looked up ng-openapi (ctx7) and build-time OpenAPI (Learn CLI) on its own.
+Rehearsal: ~13 min, 55 turns, $3.84, no questions. With effort high the agent researches a lot (~25 Learn CLI searches/fetches: build-time OpenAPI, `WebApplicationFactory`, error handling) and verified from scratch at the end (deleted generated client, `wwwroot`, `bin`/`obj`, rebuilt, ran all suites).
 
-What the agent built (both runs met all requirements; names, paths and details differ from run to run):
+Findings (names and details differ from run to run):
 
-* Interface + implementation for `Add` + custom exception for negative parameters in GraderLogic
-* `GET /api/.../add?a=&b=` → `{ result }` or `400` ProblemDetails; endpoint handler = public static method with typed results (`Results<Ok<T>, ProblemHttpResult>`) → unit-testable without HTTP, typed results feed OpenAPI
-* OpenAPI spec written to a file in `GraderApi` on build; `npm run generate:api` (ng-openapi) generates the client into `GraderWeb/src/app/api`; spec + client are committed
-* `ng serve` proxies `/api` → backend; `ng build` outputs into `GraderApi/wwwroot`, backend serves it incl. SPA fallback
-* Calculator component with signal forms
-* Tests: ~10 .NET unit + integration (`WebApplicationFactory<Program>`), 2–3 Vitest component, 2 Playwright e2e (against the production setup: Angular build served by GraderApi)
-* `tech-docs/testing.md`, `tech-docs/api-client.md`, `AGENTS.md` with run commands + tech docs overview
+* Gotchas the agent hit, fixed and documented: numbers typed as `number | string` (fixed with strict JSON number handling), doubled `/api` (ng-openapi base path + spec paths), decimals caused a server error (`int` endpoint → form now requires whole numbers), unknown `/api` routes returned the Angular page (now 404)
+* Decisions worth reviewing: spec committed (API changes show up as diffs), generated Angular client **not** committed but regenerated by `npm start/build/test` (earlier runs committed it – both are defensible); e2e tests run against the published app in Production mode; Scalar/OpenAPI only in Development
+* Non-determinism: same prompt, different names, paths, number types and policies across runs → review decisions, write down the ones that matter (tech docs, prompt)
 
 Things to show/discuss:
 
 * Walk through `tech-docs/*.md`: decisions + gotchas + pointers, no code copies
-* Agent decisions worth reviewing: committed generated client (pro: frontend builds without .NET; con: must regenerate), strict JSON number handling (otherwise spec types numbers as `integer | string`)
-* Gotchas the agent hit and documented (run 2): double `/api` (ng-openapi base path + spec paths), `<input type="number">` without `step="any"` blocks decimals (only the e2e test caught it)
-* Non-determinism: same prompt, different names, paths, number types (`int` vs. `decimal`) and even policies (run 1 exposed `/scalar` in all environments, run 2 only in Development) → review decisions, write down the ones that matter (tech docs, prompt)
-* Try it: `dotnet run --project GraderApi` + `cd GraderWeb && npm start` → http://localhost:4200, API docs at `/scalar` (backend URL, Development)
+* Try it: `dotnet run --project GraderApi` (http://localhost:5100, API docs at `/scalar`) + `cd GraderWeb && npm start` → http://localhost:4200
 
 Learnings:
 
@@ -260,14 +283,13 @@ Add a QA baseline that gives agents (and later CI) fast, deterministic feedback:
 - Commit directly to main.
 ```
 
-Rehearsal: 6–7 min per run, no struggles (agent looked up Biome via ctx7 and analyzer settings via Learn CLI).
+Rehearsal: ~9 min, 40 turns, $2.66, no questions, no struggles. The agent proved the baseline with planted mistakes (unused using, formatting, `int` vs. `var`, CS0219, `==`, missing `alt`, a signal used without calling it) – all caught, then reverted.
 
-What the agent built (details differ from run to run):
+Findings (details differ from run to run):
 
-* `Directory.Build.props`: `AnalysisLevel` latest-recommended, `EnforceCodeStyleInBuild`, `TreatWarningsAsErrors`; rule severities + naming conventions in root `.editorconfig`
-* `GraderWeb/biome.json` replaces Prettier; `npm run lint` / `npm run format`; Angular extended diagnostics (`extendedDiagnostics.defaultCategory: error`) turn template warnings into errors
-* `scripts/qa.sh`: 7 checks (.NET format, .NET build + analyzers, .NET tests, Biome, Angular build, Vitest, Playwright), one section per check, tool output only on failure, dependent checks SKIPPED, summary table, exit code 1 on failure (run 1 also added full logs in `.qa-logs/` and `--skip-e2e`)
-* `AGENTS.md`: "run `scripts/qa.sh` at the end of every session that modified code; fix code, don't suppress findings"; details in `tech-docs/testing.md`
+* `Directory.Build.props` + root `.editorconfig` (recommended analyzers, code style on build, warnings as errors); Biome with `npm run check`/`fix`; Angular extended template diagnostics as errors
+* `scripts/qa.sh`: 8 sections, PASS/FAIL/SKIP, output only for failing sections (full logs in `.qa-logs/`), keeps going after a failure, `--skip-e2e`, ~15 s; new `tech-docs/code-quality.md`
+* Decisions worth reviewing: Biome's HTML formatter off (mangles `@if`), `useLiteralKeys`/`useImportType` off (conflict with Angular), CA1707 off for test names – each with a documented reason
 
 Demo (works independently of the names the agent chose):
 
@@ -275,20 +297,15 @@ Demo (works independently of the names the agent chose):
 scripts/qa.sh                                                 # all green, ~15 s
 printf 'using System.Text;\n\nnamespace GraderLogic;\n\npublic class Oops { public int M() { int unused = 1; return 42; } }\n' > GraderLogic/Oops.cs
 echo 'var unused = "x";' >> GraderWeb/src/app/app.routes.ts   # unused variable
-scripts/qa.sh                                                 # 3 checks FAIL, exit 1, file:line + rule IDs (IDE0005, CS0219, CA1822, noUnusedVariables, …)
+scripts/qa.sh                                                 # several checks FAIL, exit 1, file:line + rule IDs (IDE0005, CS0219, CA1822, noUnusedVariables, …)
 git checkout -- . && rm GraderLogic/Oops.cs
 ```
 
 Things to show/discuss:
 
-* Output format designed for agents: `file(line,col): rule: message`, link to rule docs, only failing tools print output
-  * Run 2's script repeats MSBuild errors and prints absolute paths → nice live follow-up prompt: "make the QA output more concise (deduplicate, relative paths)"
-* Gotchas the agent found and documented in `testing.md`:
-  * Biome's HTML support does not understand Angular control flow (`@if`, `@for`) → templates excluded from Biome, the Angular compiler (strict templates) checks them
-  * Some Biome rules conflict with Angular (`useImportType` breaks DI) → disabled with a reason
-  * IDE0005 (unnecessary using) needs `GenerateDocumentationFile` → XML doc comments now also flow into OpenAPI
+* Output format designed for agents: `file(line,col): rule: message`, only failing tools print output – a nice live follow-up prompt if the output is too noisy: "make the QA output more concise"
 * Agent rule: "fix code, don't suppress findings; change rules only with documented reason" – otherwise agents tend to "fix" by disabling
-* Rehearsal note: without "directly to main" the agent once created a feature branch (Claude Code's default git behavior)
+* Without "directly to main" in the prompt, Claude Code sometimes creates a feature branch (its default git behavior)
 
 Learnings:
 
@@ -340,16 +357,14 @@ Add a database. The data model is specified in ./spec/2026-09-storyboard_erdiagr
 - Done when the QA script is green. Then commit directly to main.
 ```
 
-Rehearsal: ~5 min, no struggles, no questions (the spec has no contradictions). The agent checked the EF Core 11 breaking changes (Learn CLI) and added the EF Core packages and `dotnet-ef` with `--prerelease` (thanks to the .NET 11 note in `AGENTS.md` from step 2).
+Rehearsal: ~9.5 min, 31 turns, $2.56, no questions, no struggles (the spec has no contradictions).
 
-What the agent built (details differ from run to run):
+Findings (details differ from run to run):
 
-* `GraderLogic/Data/`: one class per entity, `GraderDbContext` (all constraints in `OnModelCreating`), `IDesignTimeDbContextFactory` → `dotnet ef` works with GraderLogic as startup project, database path = `data/grader.db` in the repo root
-* Initial migration in `GraderLogic/Migrations/`; `data/.gitkeep` + `.gitignore` for `data/*`
-* Database-enforced constraints: unique indexes, `ON DELETE RESTRICT` on every FK, check constraint for `Percentage` – and check constraints for max lengths (SQLite ignores `TEXT` lengths)
-* `TestDataGenerator` (Bogus, `TimeProvider` for "current year", optional seed), throws on non-empty database
-* Tests in `GraderTests/Integration/Data/` against in-memory SQLite with the real migrations: exact row counts (3 school years, 30 classes, 600 students, 5 courses, 600 exams, 10,800 results), distribution sanity check, non-empty DB throws, the three constraint tests (asserting the SQLite error code)
-* Local tool manifest `dotnet-tools.json` with `dotnet-ef` 11 RC; `tech-docs/database.md`; `AGENTS.md` with spec note + first-time setup `dotnet tool restore`
+* All constraints enforced by the database (max lengths as check constraints – SQLite ignores `TEXT` lengths –, unique indexes, `ON DELETE RESTRICT` on every FK via one loop in `OnModelCreating`, Percentage 0–100)
+* `dotnet-ef` 11 RC as a local tool (the global one is 10.x), design-time factory → migrations from GraderLogic, `data/grader.db`
+* Tests against in-memory SQLite built with the real migrations: exact row counts (3 / 30 / 600 / 5 / 600 / 10,800), distribution sanity check, the three constraint tests
+* Decisions the agent flagged itself: migrations marked as generated code in `.editorconfig` (EF Core 11 migrations violate the analyzers – close to the "no suppressions" rule, so it asked for review); constraint tests assert SQLite error 19 (RESTRICT reports a "trigger" code, not the FK code); exams spread over different days and off weekends; the spec committed
 
 Demo:
 
@@ -365,12 +380,8 @@ cd .. && git status                                # clean: database file is ign
 Things to show/discuss:
 
 * Spec → non-obvious decisions: "enforced by the database" made the agent add `length(...) <= n` checks because SQLite ignores declared lengths
-* Tests prove that the **database** rejects the change: violating changes are saved with a context that does not track the conflicting rows (otherwise EF Core throws before sending SQL); asserts SQLite error codes (RESTRICT is reported as 1811 `SQLITE_CONSTRAINT_TRIGGER`, not 787 – agent found out by running the test)
-* Gotchas the agent found and documented:
-  * Global `dotnet-ef` (10.x) does not match EF Core 11 → local tool manifest
-  * Generated migrations violate analyzers → `generated_code = true` for `GraderLogic/Migrations/**.cs` in `.editorconfig` (documented reason, see step 4 rule)
-* Deterministic test data: exact counts because the spec fixes all numbers; `TimeProvider` + seed make the rest reproducible
-* `AGENTS.md` spec note: "specs are historical, code and tech docs win, ask if unsure" – the agent did not ask because the spec is consistent (educational: in interactive sessions the agent stops and asks)
+* Tests prove that the **database** rejects the change (not EF Core) – asserting SQLite error codes
+* `AGENTS.md` spec note: "specs are historical, code and tech docs win, ask if unsure" – the agent did not ask because the spec is consistent, but it listed its own judgment calls for review
 
 Learnings:
 
@@ -444,16 +455,14 @@ Requirements:
 - Done when the QA script is green. Then commit directly to main.
 ```
 
-Rehearsal: ~11 min, no questions, no struggles – the longest step so far (12 use cases + demo data). The agent verified every endpoint by hand against a temporary database, found a runtime-only query problem (see gotchas) and fixed it.
+Rehearsal: ~13.5 min, 53 turns, $4.28, no questions, no struggles – 12 use cases + demo data. The agent called every endpoint against a temporary database and found a runtime-only query problem (see below).
 
-What the agent built (details differ from run to run):
+Findings (names and details differ from run to run):
 
-* `GraderLogic/<Area>/`: `IClassManagementService`, `IExamService`, `IDemoDataService` + implementations and request/response records; `GraderLogic/Errors/`: `GraderException` base with `NotFound`/`BusinessRule`/`Conflict` exceptions, all codes in one `ErrorCodes` class; `Data/DatabaseErrors.cs`: `SaveChangesTranslatingErrorsAsync` turns constraint violations into `constraint-violation` conflicts
-* `GraderApi/<Area>Endpoints.cs` (thin, public static handlers, typed results), `GraderExceptionHandler` (`IExceptionHandler` → Problem Details with `code`), validation errors get `code: validation-failed`
-* 13 endpoints in 3 tags (`ClassManagement`, `Exams`, `DemoData`), e.g. `PUT /api/classes/{classId}`, `PUT /api/exams/{examId}`, `POST /api/demo-data`; `GraderApi.http` with example requests
-* GraderApi uses `data/grader.db` and applies migrations at startup (skipped during build-time OpenAPI generation); API integration tests now run against in-memory SQLite (`GraderApiFactory`)
-* Exemplary tests: DB error translation (unit), endpoint with mocked service (unit), saving a class with added/changed/removed students against SQLite (integration), create class end to end incl. `code` (integration)
-* `tech-docs/web-api.md` extended by the agent; `AGENTS.md` index, `database.md`, `testing.md` updated
+* Architecture followed without repeating it in the prompt: service interfaces in `GraderLogic/<Area>/`, thin `<Area>Endpoints.cs`, Problem Details with a stable `code` for every error (incl. the framework's own: `validation-failed`, `invalid-request`)
+* Test factory with its own in-memory database (the API migrates its database on startup and would otherwise touch `data/grader.db`)
+* Gotcha found only by calling the endpoint: SQLite can't translate a nested collection projection (SQL `APPLY`) → fails at runtime, not at build time; split into two queries, test + gotcha in `web-api.md`
+* Decisions the agent flagged: demo data reset deletes table by table in one transaction (deviates from the article's "load + save" pattern → recorded as an exception in `web-api.md`); missing fields → 400 (nullable fields must be sent as `null`); SQLite sorts umlauts after "z" (documented, not fixed – a good live follow-up prompt)
 
 Demo:
 
@@ -467,22 +476,14 @@ In Scalar (`/scalar` on the backend URL) or `GraderApi/GraderApi.http`:
 1. `POST /api/demo-data` → 204, database filled
 2. `GET /api/school-years` → newest first; classes of a school year incl. student count; a class incl. its students
 3. `GET` an exam → all students of the class, `percentage: null` for missing results
-4. `PUT` the class without one of its students → 409 `student-has-exam-results` (whole request rejected)
+4. `PUT` the class without one of its students who has results → 409 `student-has-results` (whole request rejected)
 5. `DELETE` a class that has exams → 409 `class-has-exams`; `POST` a class with an empty name → 400 with field errors + `code: validation-failed`
 
 Things to show/discuss:
 
-* The article as a living document: our principles are unchanged, the agent added pointers, a use-case area table, examples to copy for tests and gotchas
-* Architecture followed: OpenAPI schemas contain only DTOs (`ClassDetails`, `ExamRequest`, …), no entity types; tags + operation names (`SaveClass`, `GetExam`) → generated Angular services `classManagement.service.ts`, `exams.service.ts`, … read like use cases
-* Agent decisions worth reviewing (all documented in `web-api.md`):
-  * Unknown id in the route → 404, unknown id in the body (e.g. `courseId`) → 400
-  * Exam results: `null` percentage and missing entry both mean "no result" → client can send back what it got from `GET`
-  * Write endpoints return the saved document via the service's own read method → `PUT`/`POST` and `GET` responses cannot drift apart
-  * Migrations at startup: convenient for the demo; discuss for production
-* Gotchas the agent found and documented:
-  * Request records live in GraderLogic, but the validation source generator only covers the assembly that calls `AddValidation()` → without `[ValidatableType]` requests are **silently not validated**
-  * SQLite cannot translate some nested collection projections (SQL `APPLY`) → fails at runtime, not at build time; found only because the agent called every endpoint
-  * SQLite sorts with binary collation: umlauts after `z` ("Özdemir" after "Zach") → documented, not fixed; good live follow-up prompt
+* The article as a living document: our principles are unchanged, the agent added pointers, examples to copy and gotchas (`git diff` of `web-api.md`)
+* Architecture followed: OpenAPI schemas contain only DTOs, no entity types; tags + operation names → generated Angular services read like use cases
+* The agent asked for review where it deviated from the article instead of silently ignoring it (the "ask first" rule in the prompt)
 * The prompt contains nothing about layers, error handling or conventions – and the result still follows them
 
 Learnings:
@@ -552,17 +553,11 @@ Requirements:
 - Done when the UI works and the QA script is green. Then commit directly to main.
 ```
 
-Rehearsal 7a: ~20 min (Claude Code with `--chrome`), no questions, no real struggles – the time goes into scope, not detours. Rough split: 2 min researching current APIs (signal forms, icon package, Playwright setup order), 6–7 min writing the design system, base services, shell and class editor, 4 min in the browser comparing with the mockups, 2 min tests, the rest QA, docs and commit.
+Rehearsal 7a: ~22 min (Claude Code with `--chrome`), 118 turns, $9.36, no questions, no real struggles – the time goes into scope, not detours → **run it during a break**.
 
-What the agent built in 7a (details differ from run to run):
-
-* Calculator gone completely (UI, endpoint, logic, tests); `generate:api` now clears `src/app/api` first (ng-openapi does not delete files of removed services)
-* `src/styles/`: `tokens.css` (all colors, type, spacing as CSS variables; dark theme = `:root[data-theme='dark']` swaps only color tokens), global classes for typography, buttons, inputs, tables, skeletons, layout
-* `core/` base services: `SchoolYearService` (global context, newest by default), `ThemeService` (light default, `localStorage`, applied before Angular boots → no flash), `ConfirmService`, `NotificationService`, `api-errors.ts` (error `code` → user message, status 0 → "server cannot be reached", 5xx → generic)
-* `ui/` base components: `ConfirmDialog` (native `<dialog>`), `NotificationBar`, `LoadError` (with "Try again"), `FieldError` + a directive that sets `aria-invalid` (signal forms don't)
-* Classes: grid with skeleton while loading (switching the year cancels the pending request), editor with signal forms (new rows on top with focus, local remove, full-document save, "n fields need attention", focus on the first invalid field, server errors in place of the count, "name taken" at the field), delete with confirmation; Settings (theme toggle, reset demo data); Exams placeholder
-* Tests: 15 component tests (confirm dialog, class editor, error messages) with the generated `ClassManagementService` mocked; 3 Playwright tests against a temporary database (`<tmpdir>/grader-e2e.db`, deleted before each run, filled by a Playwright *setup project* via `POST /api/demo-data`; every test creates its own class → independent)
-* `tech-docs/ui.md` (tokens, global classes, base services, where errors are shown, page patterns, gotchas); `testing.md`, `api-client.md` updated
+* Design system in `src/styles/tokens.css` + global classes; base components (`ConfirmDialog` on native `<dialog>`, `LoadError`, `FieldError`, `Skeleton`, `SchoolYearPicker`) and services (`SchoolYearStore`, `ThemeService`, `ConfirmService`, `toApiError`)
+* Browser check: the Chrome window was maximized on a 2056 px screen and could not be resized, so the agent took the exact 1920×1080 comparison screenshots with Playwright's Chromium and used Chrome for the interactive checks; only fix needed: a wider school year select
+* Decisions worth reviewing: E2E server on its own port and never reused (protects `data/grader.db`); router links carry an extra `href` instead of switching off a Biome rule (AGENTS.md: no rule changes without agreement); "Cancel" leaves the editor
 
 Prompt 7b (Exams):
 
@@ -576,14 +571,13 @@ Implement the Exams area of the UI (the Exams endpoints of the Web API; mockups 
 - Done when the QA script is green. Then commit directly to main.
 ```
 
-Rehearsal 7b: ~10 min (half of 7a) with a prompt of five lines – the agent read `ui.md` and reused tokens, classes, error handling, confirm dialog and the field error helpers.
+Rehearsal 7b: ~19.5 min, 97 turns, $7.98 with a prompt of five lines – the agent read `ui.md` and reused tokens, classes, error handling, the confirm dialog and the field error helpers. Also a candidate for a break.
 
-What the agent built in 7b (details differ from run to run):
-
-* Exams page: 400px list column (class filter, "New exam", exams by date, selected row highlighted) | editor (date, course, results in two columns, "n of m entered"); opening an exam by URL selects its class (and school year); a new exam starts with today and "No result" for every student
-* `ui/percentage-field/` (0–100, decimals, empty = `null`); the "n fields need attention" count became a shared helper, now also used by the class editor; messages for the exam error codes
-* Tests: percentage field + exam editor (save sends all results incl. `null`, 104 blocks saving and gets the focus); Playwright: open an exam, 104 is rejected, enter 67.5, save, still there after reload
-* Dates as strings end to end (rule in `web-api.md`, see step 6); without that rule the rehearsal agent found the mismatch only here: the client generator from step 3 typed `DateOnly` as `Date`, but the API sends `yyyy-MM-dd` strings
+* Browser comparison found and fixed four differences (list 7 px too high, date/course row 8 px too high, percentage column too wide, number spinners covering the value); positions match within 1–2 px
+* It extended the API on its own (an exam now includes its school year, needed for deep links) and updated the integration test and the OpenAPI spec
+* Found an Angular forms quirk (a date field marks the form dirty on creation → "Saved" vanished) and deliberately deviated from the `angular-developer` skill (`null` in number fields) – both documented in `ui.md`
+* Native date/number inputs follow the browser locale ("67,5" in a German browser), not the mockups – by design (native controls)
+* It found the dev servers from 7a still running with the old API build and started its own on other ports instead of killing yours
 
 Demo:
 
@@ -600,21 +594,16 @@ cd GraderWeb && npm start                   # http://localhost:4200
 
 Things to show/discuss:
 
-* Design readme vs. PNGs: the agent took exact values from the text and used the images for layout and behavior; it compared screenshots with the mockups and fixed real differences (a heading-size count, row heights 53 → 49px, a 2px taller date input)
-* The gaps were filled consistently with the design system: `ui.md` has a table "where each kind of error is shown"; the confirmation dialog is the native `<dialog>` (focus trap, Escape for free)
-* Agent decisions worth reviewing:
-  * `rxResource` with the generated (Observable-based) client instead of `httpResource` – what does "use resources" mean when the client is RxJS-based? (ng-openapi also has an httpResource plugin)
-  * `lucide-angular` only supports Angular ≤ 21 → official successor `@lucide/angular` (the design readme has been corrected since)
-  * Biome's `useValidAnchor` switched off for templates (`routerLink` sets `href` at runtime), reason documented in `testing.md`
-  * Scope beyond the prompt: more tests than asked (3 e2e tests in 7a), notification bar, "Try again" state – good or too much?
-* Gotchas the agent found and documented: signal forms don't set `aria-invalid`; jsdom has no `showModal()`; array rows in signal forms keep their state only if the item objects are reused; `npm test` regenerates the client and confuses a running `ng serve`; native date/number inputs follow the browser language ("75,5" in a German browser) even without i18n
-* Browser in the loop: the agent resized, measured element positions, toggled dark mode, delayed `fetch` to see the skeleton and simulated a network failure – verification a screenshot test would not do
-* Cost: 7a is the most expensive step so far (~$9 in the rehearsal, 7b ~$4)
+* Design readme vs. PNGs: the agent took exact values from the text and used the images for layout and behavior, then compared screenshots with the mockups and fixed real differences
+* The gaps were filled consistently with the design system (settings, confirmation dialog, error display)
+* Agent decisions worth reviewing: `rxResource` with the Observable-based generated client vs. `httpResource`; scope beyond the prompt (more tests than asked, loading placeholders) – good or too much?
+* Browser in the loop: the agent resized, measured element positions, toggled dark mode and clicked through the workflows – verification a screenshot test would not do
+* Cost: 7a + 7b ≈ $17, the most expensive step of the day
 
 Learnings:
 
 * Agents can deal with design input: images for layout and behavior, a text readme for exact tokens and rules
-* Design system first: reusable tokens, classes, components and services make the follow-up prompt short (7b: 5 lines, half the time)
+* Design system first: reusable tokens, classes, components and services make the follow-up prompt short (7b: 5 lines – the time goes into the new UI and the browser check, not into foundations)
 * Designs are never complete → name the important gaps in the prompt and let the agent extrapolate from the design system
 * Close the loop visually: the agent inspects its own UI in a real browser and compares it with the mockups (Claude in Chrome, Playwright MCP, …)
 * Testable by design: generated client injected → mocked in component tests; e2e against a throwaway database filled by the existing demo data generator
@@ -656,17 +645,13 @@ Add a command-line interface (CLI) for Grader: a new .NET console project Grader
 - Done when the tests and the QA script are green (no manual checks against a running API). Then commit directly to main.
 ```
 
-Rehearsal 8a: ~14 min, no questions. This rehearsal ran with the old last line ("Done when … works against the running API …"), so the agent also checked everything against a live API on its own; the prompt now asks for tests + QA only to save stage time, and the numbers will change with the next rehearsal. Most of the time went into research (Kiota with the OpenAPI 3.2 spec, the System.CommandLine release matching the .NET 11 SDK, its help customization) and into trying every command against a real API on a temporary database.
+Rehearsal 8a: ~19 min, 44 turns, $5.65, no questions → a candidate for a break. Most of the time goes into research (Kiota, the System.CommandLine release matching the .NET 11 SDK) and tests.
 
-What the agent built in 8a (details differ from run to run):
-
-* `GraderCli` (System.CommandLine 3.0 RC – ships with .NET, so the AGENTS.md version rule picked the RC matching the SDK) with command groups = OpenAPI tags, commands = operation names: `grader class-management get-class 7`, `grader exams save-exam 12 --input exam.json`, `grader demo-data reset-demo-data --yes`. That rehearsal ran with a prompt that did not ask for short names – consistent and predictable for agents, but clumsy for humans. The prompt now asks for short names; the command names in this section and in the demo below are from that run and will change with the next rehearsal
-* `--json` (results on stdout, errors on stderr, both JSON), error `code` from the Problem Details, exit codes 0–6 (2 = invalid input/missing `--yes`, nothing sent; 3/4/5 = HTTP 400/404/409; 6 = API not reachable), `--help` with examples and the exit codes; `--api-url` / `GRADER_API_URL` / default `http://localhost:5100`
-* Kiota client in `GraderCli/ApiClient/` (committed, marked as generated code in `.editorconfig`); `scripts/generate-cli-client.sh` regenerates it, and with `--check` it is a **new QA step** that fails if the client is out of date – the agent turned the AGENTS.md rule into a check
-* AGENTS.md: new section "API Changes" (both generated clients must follow every API change in the same commit; how to regenerate the CLI client; mirror new endpoints as commands)
-* `scripts/install-cli.sh`: packs and installs/updates the global tool
-* 2 tests: CLI in-process against the Web API in memory (`WebApplicationFactory`'s `HttpClient` passed to the Kiota adapter), API error → error code + exit code
-* `tech-docs/cli.md` (principles, exit codes, structure, adding a command, Kiota, installing, testing, gotchas); `api-client.md`, `testing.md` updated
+* Commands: `grader school-years list`, `grader classes list|get|create|save|delete`, `grader courses list`, `grader exams list|get|create|save|delete`, `grader demo-data replace` – ids as arguments, documents as JSON via `--file` or stdin
+* `--json` (API JSON on stdout, errors on stderr with the error `code`), exit codes 0–6 (2 = bad input/missing `--yes`, 3/4/5 = HTTP 400/404/409, 6 = API not reachable), `--api-url` / `GRADER_API_URL` / default `http://localhost:5100`
+* Kiota client committed in `GraderCli/ApiClient`, regenerated only by `scripts/generate-cli-client.sh`; a **new QA check** fails if it is out of date – the agent turned the AGENTS.md rule into a check
+* Design point the agent found: Kiota's serializer never writes `null`, but the API requires explicit nulls (`"id": null` for a new student) → the CLI uses Kiota's request builders and adapter, but sends the JSON exactly as given (so `get --json > class.json` → edit → `save --file class.json` round-trips)
+* 10 tests run the whole CLI in memory against the in-memory API
 
 Prompt 8b (skill):
 
@@ -678,15 +663,11 @@ Use the skill-creator skill to create a project skill `grader-cli` (in .agents/s
 - Done when the QA script is green. Then commit directly to main.
 ```
 
-Before 8b: start the API in a second terminal (`dotnet run --project GraderApi`) and reset the demo data (Settings in the UI, or `grader demo-data reset-demo-data --yes`).
+Before 8b: start the API in a second terminal (`dotnet run --project GraderApi`) and reset the demo data (Settings in the UI, or `grader demo-data replace --yes`).
 
-Rehearsal 8b: ~5 min. The agent followed the skill-creator process in a light version: explored the CLI hands-on, wrote the draft, then ran 3 test tasks **with and without the skill in parallel subagents** – the baselines against a second API instance on a copy of the database, so they could not interfere. Both variants solved all tasks; with the skill the agents were faster and needed fewer commands (without it they guessed commands like `grader classes --help`). One finding changed the skill: it had said "one decimal is plenty" and the agent rounded 98.75 % to 98.8 % → now "store the exact value". Afterwards the agent cleaned up its test data in the development database.
+Rehearsal 8b: ~6.5 min, $3.26. The agent followed the skill-creator process in a light version: explored the CLI, wrote the draft, ran 3 realistic test tasks in subagents (messy names like "MÜLLER Sophie", points out of 40 → percent with an absent student, averages with missing results), revised the skill, and restored the development data afterwards. It skipped the "without skill" baselines on purpose: they would have written to the same database at the same time.
 
-What the agent built in 8b:
-
-* `.agents/skills/grader-cli/SKILL.md` (~100 lines) + link in `.claude/skills/`; a "pushy" description (triggers on "a teacher pastes a list of names or scores", even without mentioning the CLI)
-* Content: find the CLI and check the API first; `--json` for the agent, tables for the teacher; ids only via navigation (school year → class → exam, never from memory – ids change with `reset-demo-data`); **complete-document saves: get → edit → save, compare before saving**; destructive commands only on explicit request, never delete to get around a rule; workflows (class from a list of names incl. name formats and duplicates, recording results incl. points → percent and "absent = no result, not 0", answering questions: percentages, not grades); table of error codes → what to do
-* `tech-docs/cli.md`: when the skill must be updated
+* `.agents/skills/grader-cli/SKILL.md` + link in `.claude/skills/`: find ids by name (never from memory – ids change with every demo data reset), get → edit → save complete documents, `"id": null` for new students, missing result ≠ 0, destructive commands only on explicit request, averages without missing results and "say how many results an average is based on"
 
 Prompt 8c (a teacher's request – run it in a **new session**):
 
@@ -698,7 +679,7 @@ They wrote their first Mathematics test on 22 September 2026: Huber 78 %, Gruber
 Please enter all of this in Grader.
 ```
 
-Rehearsal 8c: 36 s, $0.31. The agent loaded the `grader-cli` skill by itself, checked the school year and that 1D is free, created the class, mapped the names to the new student ids and created the exam – Hannah without a result instead of 0 %.
+Rehearsal 8c: 40 s, $0.30. The agent loaded the `grader-cli` skill by itself, created class 1D in 2026/27 and the exam – Hannah without a result instead of 0 % (checked in the database).
 
 Prompt 8d (a question, new session):
 
@@ -706,23 +687,24 @@ Prompt 8d (a question, new session):
 Which three students had the lowest average result in Mathematics in school year 2025/26? Show their class and average.
 ```
 
-Rehearsal 8d: 1 min, $0.32. The agent fetched all Mathematics exams of the 10 classes of 2025/26 (`--json` into a temp folder), computed the averages with Python and answered with a table – incl. how many results each average is based on and the hint that one student only has 2 of 4 results (the skill's "say how many results an average is based on"). Checked against the database: correct.
+Rehearsal 8d: 70 s, $0.29. The agent fetched the Mathematics exams of all classes of 2025/26 and answered with a table incl. how many results each average is based on and a tie for third place. Checked with SQL: correct. The demo data is random, so names and numbers change with every reset.
 
 Demo:
 
 ```bash
-dotnet run --project GraderApi                       # terminal 1: API on :5100
-scripts/install-cli.sh                               # terminal 2: pack + install the global tool
-grader --help                                        # groups, examples, exit codes
-grader class-management get-school-years            # ids change with every demo data reset
-grader class-management get-classes <year-id>
-grader class-management get-class <class-id> --json | jq '.students | length'
-grader exams delete-exam 1; echo $?                  # confirmation-required, exit code 2
-grader class-management get-class 99999; echo $?     # class-not-found, exit code 4
+dotnet run --project GraderApi                                          # terminal 1: API on :5100
+dotnet pack GraderCli -c Release                                        # terminal 2
+dotnet tool install --global --add-source GraderCli/nupkg GraderCli     # update: uninstall + install (same version)
+grader --help                                                           # commands, output, exit codes
+grader school-years list                                                # ids change with every demo data reset
+grader classes list <year-id>
+grader classes get <class-id> --json | jq '.students | length'
+grader exams delete 1; echo $?                                          # --yes missing, exit code 2
+grader classes get 99999; echo $?                                       # class-not-found, exit code 4
 ```
 
-1. `grader --help`, then the same with `dnx`: `dnx GraderCli --add-source GraderCli/nupkg --prerelease --yes -- --help` (runs without installing; the package has a `-dev` prerelease version)
-2. `tech-docs/cli.md` + the "API Changes" rule in AGENTS.md; `scripts/generate-cli-client.sh --check` in the QA script
+1. `grader --help`, then the same with `dnx` (runs without installing): `dnx GraderCli --add-source GraderCli/nupkg --yes -- --help`
+2. `tech-docs/cli.md` + the API-change rule in AGENTS.md; `scripts/generate-cli-client.sh` as a QA check
 3. `.agents/skills/grader-cli/SKILL.md`: what's in there that `--help` doesn't say
 4. New session → prompt 8c → check class 1D in the UI (step 7)
 5. New session → prompt 8d
@@ -730,16 +712,11 @@ grader class-management get-class 99999; echo $?     # class-not-found, exit cod
 
 Things to show/discuss:
 
-* **CLI + skill vs. MCP server:** the CLI costs no tokens until it is used, its output can be piped and filtered before it reaches the context (8d: 40 exams went through Python, only the result reached the model), and humans and scripts use the same tool. MCP shines where there is no shell (e.g. claude.ai, mobile) or for remote/authenticated access
-* Command names: without a hint, the agent derived them 1:1 from tag + operation name (`grader class-management get-class`, `grader demo-data reset-demo-data`) – agents don't care, humans do. One line in the prompt fixes it; a CLI serves both audiences
-* Gotchas the agent found and documented:
-  * Kiota's JSON parser silently **drops values of the wrong type** (`"students": "abc"` became an empty list and the class was created!) → the CLI serializes the parsed input again and rejects it with the JSON path if anything got lost
-  * `dotnet tool update` does not reinstall an installed version, and NuGet caches packages by version → `install-cli.sh` packs a unique `-dev.<timestamp>` version every time
-  * Kiota can't see the `code` extension member of Problem Details (not in the schema) → read from `AdditionalData`
-  * `save-*` does not require `--yes` although it removes what's missing from the document – the API contract; the skill covers it ("compare before saving")
-* Permissions: allow `Bash(grader:*)` (or `Bash(dotnet run --project GraderCli:*)`) in `.claude/settings.json`, and the agent works without prompts – but mind destructive commands
-* The skill's evaluation ran in parallel subagents against a **copy** of the database – the agent protected the development data without being told
-* Cost: 8a ~$4.50, 8b ~$3.50, 8c/8d ~$0.30 each – the "using" prompts are cheap because the investment was made in 8a/8b
+* **CLI + skill vs. MCP server:** the CLI costs no tokens until it is used, its output can be piped and filtered before it reaches the context, and humans and scripts use the same tool. MCP shines where there is no shell (e.g. claude.ai, mobile) or for remote/authenticated access (steps 9 and 10)
+* Command names: without a hint, agents derive them 1:1 from tag + operation name (`grader class-management get-class`) – agents don't care, humans do. One line in the prompt fixes it
+* Permissions: allow `Bash(grader:*)` in `.claude/settings.json`, and the agent works without prompts – but mind destructive commands
+* The skill's evaluation protected the development data (no parallel baselines, test data removed afterwards) without being told
+* Cost: 8a ~$5.65, 8b ~$3.26, 8c/8d ~$0.30 each – the "using" prompts are cheap because the investment was made in 8a/8b
 
 Learnings:
 
@@ -785,38 +762,20 @@ Turn the CLI into an MCP server: `grader mcp` runs Grader as a stdio server for 
 - Done when the tests and the QA script are green (no manual checks against a running API). Then commit directly to main.
 ```
 
-Rehearsal 9a: ~22 min, 81 turns, $5.52, no questions. This rehearsal ran with the old last line ("Done when … works against the running API …"), so the agent also checked everything against a live API on its own; the prompt now asks for tests + QA only to save stage time, and the numbers will change with the next rehearsal.
+Rehearsal 9a: ~22 min, 82 turns, $5.66, no questions, no manual checks against a running API → a candidate for a break.
 
-* Research: the agent read the CLI code, then fetched `llms.txt` with `curl`. From the index it downloaded the spec pages it needed: changelog, tools, stdio transport, versioning, `server/discover`, schema
-* SDK: it looked up the SDK versions on NuGet and cloned the C# SDK into `~/github/csharp-sdk` (the AGENTS.md rule). It checked out the tag of the version it used and read the source and docs there
-* Verification: a scripted raw JSON-RPC session against a real API on a **temporary database** (the development data stayed untouched), plus the MCP Inspector CLI
-* One test run hung. The cause: the SDK's test client does not close the server's stdin. The agent fixed the test and documented this as a gotcha
-
-What the agent built in 9a (details differ from run to run):
-
-* **SDK:** `ModelContextProtocol.Core` 2.2.0, the low-level package (`McpServer.Create` + stdio transport, no generic host). 2.x supports 2026-07-28 since 2.0.0; 2.2.0 is the latest
-* **Protocol:** `server/discover` answers `supportedVersions: ["2026-07-28"]`, and a request with `2025-11-25` in `_meta` gets error `-32022` (UnsupportedProtocolVersion). The legacy `initialize` handshake still works, for free from the SDK
-* **CLI refactoring:** commands now write through an abstract `CommandContext`, either `CliCommandContext` (command line, stdout) or `McpToolContext` (tool arguments → tool result). Each command declares `CommandTraits` (read/create/save/delete), which become the annotations. The command list is the tool list: 13 commands = 13 tools, same names (`get-class`, `save-exam`, …), parameters in camelCase (`classId`)
-* **Save/create tools:** they take `document` (inline) or `documentPath` (local JSON file). The `document` schema is the request schema from the OpenAPI spec, embedded in the CLI, so the agent sees types, lengths and ranges
-* **Annotations:**
-  * `get-*`: read-only
-  * `create-*`: additive
-  * `save-*`: destructive, because it removes children missing from the document (the same reason the skill says "compare before saving")
-  * `delete-*` and `reset-demo-data`: destructive
-* **Errors:** a tool error (`isError: true`) whose text is the `--json` error, e.g. `{"code": "class-not-found", "message": "...", "status": 404}`. An unknown tool is a JSON-RPC error (`-32602`)
-* **Own `tools/list` handler:** the SDK's tool collection lists tools in hash order, but the spec asks for a deterministic order. Server instructions explain navigating by ids and saving complete documents
-* **Results:** the API JSON as text, without `structuredContent`/`outputSchema`. Kiota omits `null` values, so results would fail validation against the response schemas
-* **Tests (3):** a tool call through the SDK's MCP client against the in-memory Web API, an API error → tool error with code, and the annotations
-* **`tech-docs/cli.md`:** new MCP section covering tools, annotations, errors, registering in clients (`claude mcp add`, JSON for other clients, MCP Inspector) and gotchas, e.g. "stdout belongs to the protocol". `testing.md` updated
-* **AGENTS.md** ("Researching Documentation", new item 3):
-  > Model Context Protocol (concepts, protocol, spec): start at https://modelcontextprotocol.io/llms.txt (index of all docs pages as Markdown) and use the pages of the spec revision we support, `2026-07-28` (it differs substantially from earlier revisions, e.g. no `initialize` handshake). For the official C# SDK (`ModelContextProtocol.Core`), read its docs and source in `~/github/csharp-sdk` at the tag of the version we use (see 5.).
-* **Skill `grader-cli`:** the description now mentions `grader mcp`. A new section "Using the MCP server instead" covers ids as camelCase parameters, `document`/`documentPath`, no `--yes` (the client confirms) and errors as tool errors
+* Research: `llms.txt` with `curl`, then only the spec pages it needed (changelog, `server/discover`, tools, stdio transport, versioning); SDK versions on NuGet; SDK source in `~/github/csharp-sdk` at tag v2.2.0 (the AGENTS.md rule)
+* Refactoring: each API use case is now defined once (`GraderCli/UseCases`) and becomes both a CLI command and an MCP tool – a new use case gets both for free
+* 13 tools named after the commands (`classes_get`, `demo_data_replace`), ids as camelCase parameters; save/create tools take `document` (inline, with the API's request schema from the embedded OpenAPI spec, so the model sees required nulls) or `file` (local JSON file)
+* Annotations: `list`/`get` read-only, `save`/`delete`/`demo_data_replace` destructive (save removes what's missing from the document), `create` not destructive. API errors → tool errors with the `--json` error (`code`, `message`, `status`)
+* Only 2026-07-28 via `server/discover`; the SDK still answers the legacy `initialize` handshake for free, no extra code
+* One test run hung: the SDK's in-memory client doesn't close the server's stdin → the agent fixed its test helper and documented the gotcha
 
 Before 9b:
 
 * Start the API in a second terminal (`dotnet run --project GraderApi`) and reset the demo data (Settings in the UI).
 * Build the CLI (`dotnet build GraderCli`).
-* Register the server in the client. Start the built dll, or `grader mcp` if the global tool is installed (`scripts/install-cli.sh`). In Claude Code (local scope, not in the repo; `claude mcp get grader` should show "Connected"):
+* Register the server in the client. Start the built dll, or `grader mcp` if the global tool is installed. In Claude Code (local scope, not in the repo; `claude mcp get grader` should show "Connected"):
 
   ```bash
   claude mcp add grader -- dotnet "$PWD/GraderCli/bin/Debug/net11.0/GraderCli.dll" mcp
@@ -828,7 +787,7 @@ Before 9b:
   { "mcpServers": { "grader": { "type": "stdio", "command": "dotnet", "args": ["<repo>/GraderCli/bin/Debug/net11.0/GraderCli.dll", "mcp"] } } }
   ```
 
-* MCPJam: `npx @mcpjam/inspector@latest` (the terminal install, because a stdio server is a local subprocess). Add a stdio server with command `dotnet` and arguments `<repo>/GraderCli/bin/Debug/net11.0/GraderCli.dll mcp`. MCPJam was not tried in the rehearsal. Should it still use the legacy `initialize` handshake, the SDK answers that too (tested with raw JSON-RPC).
+* MCPJam: `npx @mcpjam/inspector@latest` (the terminal install, because a stdio server is a local subprocess). Add a stdio server with command `dotnet` and arguments `<repo>/GraderCli/bin/Debug/net11.0/GraderCli.dll mcp`.
 
 Prompt 9b (a teacher's request, new session, MCP tools only):
 
@@ -840,11 +799,7 @@ They wrote their first Mathematics test on 22 September 2026: Huber 78 %, Gruber
 Please enter all of this in Grader.
 ```
 
-Rehearsal 9b: 20 s, 9 turns, $0.25.
-
-* The agent loaded the `grader-cli` skill (its new MCP section applies), then called `get-school-years` → `get-classes` (checked that 1D is free) → `get-courses` → `create-class` (document inline) → `create-exam`
-* Hannah got no result instead of 0 %
-* Checked in the database: class 1D (2026/27) with 8 students; exam on 22 Sep 2026 with 7 results, none for Hannah Hofer
+Rehearsal 9b: 24 s, 9 turns, $0.27. The agent loaded the `grader-cli` skill (it now mentions the MCP tools), then `school_years_list` → `courses_list` → `classes_list` (1D is free) → `classes_create` → `exams_create`; Hannah without a result (checked in the database).
 
 Prompt 9c (a question, new session, MCP tools only):
 
@@ -852,12 +807,7 @@ Prompt 9c (a question, new session, MCP tools only):
 Which three students had the lowest average result in Mathematics in school year 2025/26? Show their class and average.
 ```
 
-Rehearsal 9c: 2 min, 8 turns, $0.99.
-
-* The agent delegated the calculation to a subagent, which wanted to run a script. This session had no shell, so the subagent fetched the Mathematics exams of the 10 classes with 50 MCP calls (10× `get-exams`, 40× `get-exam`) and **computed the averages by hand**
-* Answer (checked with SQL: correct): Elise Mills 2B 57.37 %, Marie Murray 2A 57.80 %, Nia Sipes 4A 58.30 %
-* It added useful caveats: Nia Sipes has only 1 of 4 results, so it also named the runner-up with 3 results. It also said it had rechecked only the lowest five averages
-* The demo data is random, so names and numbers change with every reset (the 8d rehearsal had other students)
+Rehearsal 9c: 87 s, 57 turns, $0.80. Without a shell, the agent fetched the Mathematics exams with **52 MCP calls** (10× `exams_list`, 40× `exams_get`) and computed the averages in its head – correct (checked with SQL), incl. the hint that all three have only 2 of 4 results and an alternative ranking with complete results only.
 
 Demo (API running; `dotnet build GraderCli`; tested in zsh and bash):
 
@@ -868,11 +818,11 @@ mcp() {  # send JSON-RPC requests (one per argument) to `grader mcp`; keep stdin
 META='"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}'
 mcp '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{'"$META"'}}' | jq 'del(.result.instructions)'
 mcp '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{'"$META"'}}' | jq -c '.result.tools[] | {name, annotations}'
-mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get-class","arguments":{"classId":99999},'"$META"'}}' | jq .result
-echo '{"name": "9Z", "students": [{"firstName": "Anna", "lastName": "Local"}]}' > /tmp/class-9z.json
-mcp '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create-class","arguments":{"schoolYearId":<year-id>,"documentPath":"/tmp/class-9z.json"},'"$META"'}}' | jq -r '.result.content[0].text'
+mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"classes_get","arguments":{"classId":99999},'"$META"'}}' | jq .result
+echo '{"name": "9Z", "students": [{"id": null, "firstName": "Anna", "lastName": "Local"}]}' > /tmp/class-9z.json
+mcp '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"classes_create","arguments":{"schoolYearId":<year-id>,"file":"/tmp/class-9z.json"},'"$META"'}}' | jq -r '.result.content[0].text'
 mcp '{"jsonrpc":"2.0","id":5,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2025-11-25"}}}' | jq -c .error
-npx -y @modelcontextprotocol/inspector --cli dotnet "$PWD/GraderCli/bin/Debug/net11.0/GraderCli.dll" mcp --method tools/call --tool-name get-class --tool-arg classId=99999
+npx -y @modelcontextprotocol/inspector --cli dotnet "$PWD/GraderCli/bin/Debug/net11.0/GraderCli.dll" mcp --method tools/call --tool-name classes_get --tool-arg classId=99999
 ```
 
 1. `dotnet GraderCli/bin/Debug/net11.0/GraderCli.dll mcp --help` (with the global tool: `grader mcp --help`)
@@ -880,23 +830,22 @@ npx -y @modelcontextprotocol/inspector --cli dotnet "$PWD/GraderCli/bin/Debug/ne
    * `server/discover` as the first request, with no `initialize`: supported versions, capabilities, `serverInfo` in `_meta`
    * `tools/list`: 13 tools with their annotations
    * a tool error with `isError` and the `code`
-   * `create-class` from a **local file**: take `<year-id>` from `get-school-years` (ids change with every reset)
-   * an old protocol version → error `-32022`
-3. MCPJam (or the MCP Inspector): browse tools, schemas (`document` vs. `documentPath`) and annotations, and call a tool
+   * `classes_create` from a **local file**: take `<year-id>` from `school_years_list` (ids change with every reset)
+   * an old protocol version in `_meta` → error `-32022` ("requires the initialize handshake")
+3. MCPJam (or the MCP Inspector): browse tools, schemas (`document` vs. `file`) and annotations, and call a tool
 4. AGENTS.md: the llms.txt entry. Then open https://modelcontextprotocol.io/llms.txt in the browser
 5. New session with only the MCP server → prompt 9b → check class 1D in the UI
 6. New session → prompt 9c
 
 Things to show/discuss:
 
-* **stdio MCP = fancy CLI:** same process, same code, same API calls; only the interface differs (JSON-RPC over stdin/stdout instead of argv, stdout and exit code). stdout belongs to the protocol, so a single stray `Console.WriteLine` breaks the server
+* **stdio MCP = fancy CLI:** same process, same use case definitions, same API calls; only the interface differs (JSON-RPC over stdin/stdout instead of argv, stdout and exit code). stdout belongs to the protocol, so a single stray `Console.WriteLine` breaks the server
 * **Gotcha when piping by hand:** the server stops at stdin EOF and drops requests still in flight. `printf '…' | grader mcp` prints nothing, hence the `sleep 2` in the demo
-* **Local resources:** `documentPath` reads a file on the user's machine. The same pattern reaches the intranet or IoT devices, which a remote server (step 10) can't
+* **Local resources:** `file` reads a file on the user's machine. The same pattern reaches the intranet or IoT devices, which a remote server (step 10) can't
 * **Annotations are hints for the client** (e.g. ask before a destructive tool): the confirmation moves from `--yes` into the client
-* **MCP vs. CLI + skill** (talking point only): in 9c there was no shell, so 40 exams went through the context and the averages were computed by hand ($0.99). In 8d the CLI output went through Python instead, and only the result reached the model ($0.32). MCP shines where there is no shell. The skill still helped: 9b loaded `grader-cli`, which now explains the MCP variant
+* **MCP vs. CLI + skill** (talking point only): in 9c there was no shell, so 40 exams went through the context and the averages were computed by the model (52 tool calls, $0.80). In 8d the CLI output went through a script instead, and only the result reached the model ($0.29). MCP shines where there is no shell
 * **Spec 2026-07-28 in the raw JSON:** `_meta` on every request, `server/discover`, `resultType`, `ttlMs`/`cacheScope`
-* **llms.txt:** the index vs. `llms-full.txt`. The agent fetched the index with `curl` and then only the pages it needed. The spec revision from July 2026 was implemented correctly without a single question
-* **AGENTS.md rules at work:** the agent cloned the SDK to read its source and protected the development data with a temporary database
+* **llms.txt:** the index (~350 lines) vs. `llms-full.txt` (~2.5 MB, far too big for a context window). The agent fetched the index with `curl` and then only the pages it needed – the spec revision from July 2026 was implemented without a single question
 
 Learnings:
 
@@ -904,7 +853,7 @@ Learnings:
 * Tool annotations and tool errors are the MCP counterparts of `--yes`, exit codes and stderr
 * One command list feeds both interfaces: no second implementation, no drift
 * llms.txt is an index of Markdown pages for agents. Current docs beat training data, and one line in AGENTS.md makes it stick
-* Cost: 9a ~$5.50; using the tools ~$0.25–1 per request
+* Cost: 9a ~$5.70; using the tools ~$0.25–0.80 per request
 
 Links:
 
@@ -924,7 +873,7 @@ stdio (step 9) vs. Streamable HTTP (step 10):
 |---|---|---|
 | What it is | a process the client starts; JSON-RPC over stdin/stdout | an HTTP endpoint; one POST per JSON-RPC request |
 | Users | one local user, the one who started it | many users over the network |
-| Reach | local resources: files (`documentPath`), intranet, IoT | only what the server can reach; deployed centrally |
+| Reach | local resources: files (`file`), intranet, IoT | only what the server can reach; deployed centrally |
 | Installation | .NET SDK + global tool (or the built dll) on every machine | none: a URL in the client |
 | Calls | the Web API over HTTP (Kiota client) | the GraderLogic services directly, like the endpoints |
 | Auth | the local user's credentials (here: none) | none yet; OAuth in a later step |
@@ -932,7 +881,7 @@ stdio (step 9) vs. Streamable HTTP (step 10):
 Design decisions to discuss before the prompt:
 
 * **Server-side adapter:** the tools call the GraderLogic services directly, like the REST endpoints do. They don't use HTTP, Kiota or the CLI. A new protocol costs one thin layer, not a second implementation of the business logic
-* **Same tools as `grader mcp`:** names, descriptions and annotations are the same, and there is no `documentPath` because the server can't read the user's disk. An MCP client config can be swapped from `grader mcp` to `http://localhost:5100/mcp` and the same tools appear
+* **Same tools as `grader mcp`:** names, descriptions and annotations are the same, and there is no `file` parameter because the server can't read the user's disk. An MCP client config can be swapped from `grader mcp` to `http://localhost:5100/mcp` and the same tools appear
 * **Only spec revision 2026-07-28 (stateless):** no sessions, no GET stream, every request carries protocol version and client capabilities in `_meta`, plus the `Mcp-Method`/`Mcp-Name` headers. No extra code for older revisions
 * **Tools are plain methods:** `[Description]` attributes, grouped by use-case area, with no MCP types and no MCP logic. Step 11 turns them into a shared tool catalog (`AIFunction`) for MCP and for an in-app agent
 * **llms.txt is not in the prompt:** does the AGENTS.md rule from step 9 make the agent use it anyway? (See the rehearsal)
@@ -951,59 +900,14 @@ Add an MCP server to the Web API: GraderApi offers the tools of `grader mcp` ove
 - Done when the tests and the QA script are green (no manual checks against a running API). Then commit directly to main.
 ```
 
-Rehearsal 10: ~11 min, 69 turns, $3.90, no questions while working. At the end it asked one question: should `/mcp` get Origin/Host validation? This rehearsal ran with the old last line ("Done when … works against the running API …"), so the agent also checked everything against a live API on its own; the prompt now asks for tests + QA only to save stage time, and the numbers will change with the next rehearsal.
+Rehearsal 10: ~13.5 min, 79 turns, $5.27, no questions.
 
-* **Research:** the agent read the CLI's MCP code, the API and the tech docs. Following the AGENTS.md rule, it read the SDK docs (stateless mode, tools) and source in `~/github/csharp-sdk`, plus the XML docs of `Microsoft.Extensions.Validation`
-* **llms.txt:** used, but late and targeted. After the implementation, it fetched `llms.txt` with `curl` and from it only the Streamable HTTP page, to check `GET /mcp` (→ 405) and the `Origin` rule. The protocol details themselves came from the SDK, which already implements 2026-07-28. The AGENTS.md rule did its job without being in the prompt
-* **Verification:** raw `curl` JSON-RPC against its own API instance on port 5177 with a **temporary database**, then a standalone MCP client (a file-based C# app with `#:package ModelContextProtocol.Core@2.2.0`) against the running API
-* **Small detours, no hangs:** a missing `using`, a wrong `dotnet test` filter syntax, and `GET /mcp` answered by the SPA fallback (404 instead of 405). The agent's own consistency test failed once because the SDK copies the title into `annotations.title`
-
-What the agent built (details differ from run to run):
-
-* **SDK:** `ModelContextProtocol.AspNetCore` 2.2.0, `WithHttpTransport` with `SessionMode = Stateless`, `MapMcp("/mcp")`, excluded from the OpenAPI spec (neither generated client changed)
-* **Tools (`GraderApi/Tools/`):**
-  * `ClassManagementTools`, `ExamTools` and `DemoDataTools`: one method per operation (`GetClass`, `SaveExam`, …) with `[Description]`, the use-case service injected, and GraderLogic records as parameters and results. No MCP types
-  * Tools are a boundary of their own, so they validate their request records themselves. `RequestValidator` runs the same data annotation validation as the minimal API endpoints
-* **MCP layer (`GraderApi/Mcp/`):**
-  * `GraderMcpServer` lists the 13 tools in the CLI's order with their `ToolTraits` (read/create/save/delete/reset → annotations). Names and titles come from the method names (`GetClass` → `get-class`, "Get class")
-  * Its own `tools/list`/`tools/call` handlers, as in step 9, for a deterministic order
-  * Arguments and results use the API's JSON options
-  * `ToolErrors` is a call-tool filter that turns exceptions into the stdio server's error JSON `{"code", "message", "status", "errors"}`
-  * `GET /mcp` is mapped explicitly to 405 (otherwise the SPA fallback answers)
-* **Duplication CLI ↔ API:**
-  * Descriptions and server instructions are **copied** as string literals (with a comment pointing to the CLI)
-  * A test, `ListTools_SameToolsAsCliMcpServer`, compares name, title, description, annotation hints and order of both servers. It doesn't compare parameters: those differ on purpose (`documentPath`)
-* **Tests (3):** a tool call over `/mcp` of the in-memory API (SDK `McpClient` with `HttpClientTransport`, pinned to 2026-07-28), a business rule violation (`create-exam` with an unknown course → tool error `course-not-found`, 400), and the tool list comparison with `grader mcp`. The CLI test helper moved to `CliMcpServerSession.cs`
-* **Docs:**
-  * New `tech-docs/mcp.md`: comparison table of both servers, what they share, tools as plain methods, the MCP layer, adding a tool, connecting clients, testing, and gotchas (GET vs. SPA fallback, no auth and no Origin validation, nullable types in schemas)
-  * AGENTS.md: project list, and the "API Changes" rule now includes the MCP tool
-  * testing.md, cli.md, hosting.md, web-api.md and the `grader-cli` skill updated
-
-Checked after the rehearsal (API on :5100 with demo data):
-
-* `server/discover` → `supportedVersions: ["2026-07-28"]`. Responses come as SSE (`event: message` + `data: {…}`) even for a single response
-* `tools/list`: 13 tools. Compared with `grader mcp`:
-  * **identical:** names, titles, descriptions, order, server instructions, and the four annotation hints (the HTTP server additionally has `annotations.title`)
-  * **input schemas equivalent:** same parameters apart from `documentPath`, same types, `maxLength` and 0–100 range
-  * **differences:**
-    * `document` is required over HTTP (stdio: `document` or `documentPath`)
-    * the HTTP schema has no field descriptions (stdio takes them from the OpenAPI spec)
-    * the `document` descriptions differ
-    * `get-exams.classId` says "see get-classes" over HTTP but "see class-management get-classes" in the CLI (a stale step 8 command name there). The comparison test doesn't cover parameter descriptions
-* **Errors:**
-  * unknown id → `isError` with `class-not-found`/404
-  * duplicate class name → `class-name-taken`/409
-  * name too long → `validation-failed` with field errors
-  * `classId: "abc"` → `invalid-request`
-  * unknown tool → JSON-RPC error `-32602` (a protocol error, not a tool error)
-* **Protocol checks:**
-  * a missing `Mcp-Method` header or an `Mcp-Name` that doesn't match the body → HTTP 400 with `-32020` (HeaderMismatch)
-  * a request without `_meta` → HTTP 400 with `-32602` ("must include `_meta/io.modelcontextprotocol/protocolVersion`")
-  * version `2025-11-25` in `_meta` → error `-32022` with `supported: ["2026-07-28"]`, but with HTTP 200 inside the SSE stream (the spec says 400; SDK behavior)
-  * the legacy `initialize` handshake still works, for free from the SDK
-  * `GET /mcp` → 405
-* **MCP Inspector CLI 2.8.0:** connects with its default era (legacy: `initialize`) and with `"protocolEra": "modern"` from a config file (`server/discover`). `--strict` reports 4 portability warnings: `type: ["integer","null"]` in the nullable ids/percentages
-* **Claude Code 2.1.283:** connects in the modern era (the API log shows `server/discover`, `tools/list`, `tools/call` from `claude-code`, no `initialize`). With the HTTP config, `--strict-mcp-config` and no shell, "List the classes of school year 2025/26" was answered correctly in 11 s, 4 turns, $0.13. `claude mcp add --transport http …` → `claude mcp get` shows "Connected"
+* Research: the agent read the CLI's MCP code, then the SDK docs (stateless mode, tools) and source in `~/github/csharp-sdk`. It did **not** fetch llms.txt this time – the SDK already implements 2026-07-28 and answered everything (in an earlier rehearsal the agent used llms.txt late and targeted, for `GET /mcp` and `Origin`)
+* Tools: `ClassManagementTools`, `ExamTools`, `DemoDataTools` next to the endpoints – plain methods with `[Description]` calling the GraderLogic services; `RequestValidator` runs the same validation as the endpoints (no endpoint filter runs for tools)
+* MCP layer in `GraderApi/Mcp/`: `ToolCatalog` (names, annotations, order), `ToolErrors` (same error JSON as the CLI, API error codes), stateless setup; `/mcp` excluded from the OpenAPI spec (neither generated client changed)
+* JSON: tools use the endpoints' JSON options – the SDK defaults would drop `null` and accept numbers as strings, breaking get → edit → save
+* An extra test compares the tool lists of both servers (names, descriptions, annotations); the agent checked that it fails when a description changes. The SDK appends "Returns: …" to descriptions – `ToolCatalog` strips it
+* Differences to `grader mcp`, documented in `mcp.md`: no `file` parameter, the API's error codes, unknown parameters ignored; `GET /mcp` → 405 in Development, but the SPA fallback answers outside Development (a gotcha, left as is)
 
 Before the demo:
 
@@ -1036,11 +940,11 @@ mcp() {  # mcp <method> [<tool> <arguments-json>]: one JSON-RPC request = one pl
 }
 mcp server/discover | jq 'del(.result.instructions)'
 mcp tools/list | jq -c '.result.tools[] | {name, annotations}'
-mcp tools/call get-school-years '{}' | jq -r '.result.content[0].text' | jq -c .
-Y=$(mcp tools/call get-school-years '{}' | jq -r '.result.content[0].text' | jq -r '.[] | select(.name=="2025/26") | .id')
-mcp tools/call get-classes '{"schoolYearId": '"$Y"'}' | jq -r '.result.content[0].text' | jq -c '.[]'
-mcp tools/call get-class '{"classId": 99999}' | jq -c .result
-mcp tools/call create-class '{"schoolYearId": '"$Y"', "document": {"name": "1A", "students": []}}' | jq -r '.result.content[0].text'
+mcp tools/call school_years_list '{}' | jq -r '.result.content[0].text' | jq -c .
+Y=$(mcp tools/call school_years_list '{}' | jq -r '.result.content[0].text' | jq -r '.[] | select(.name=="2025/26") | .id')
+mcp tools/call classes_list '{"schoolYearId": '"$Y"'}' | jq -r '.result.content[0].text' | jq -c '.[]'
+mcp tools/call classes_get '{"classId": 99999}' | jq -c .result
+mcp tools/call classes_create '{"schoolYearId": '"$Y"', "document": {"name": "1A", "students": []}}' | jq -r '.result.content[0].text'
 curl -s -w ' HTTP %{http_code}\n' http://localhost:5100/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
   -H 'MCP-Protocol-Version: 2026-07-28' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}'   # no Mcp-Method header → -32020, HTTP 400
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:5100/mcp                                          # GET → 405
@@ -1055,28 +959,26 @@ npx -y @modelcontextprotocol/inspector --cli http://localhost:5100/mcp --transpo
    * a tool error (`class-not-found`)
    * a business rule violation: `1A` already exists → `class-name-taken`, 409. The same code the REST endpoint returns
    * a missing header → HeaderMismatch
-3. `GraderApi/Tools/ClassManagementTools.cs` next to `ClassManagementEndpoints.cs`: two thin adapters over the same `IClassManagementService`. Then `GraderApi/Mcp/` (the only MCP-specific code)
+3. `GraderApi/ClassManagement/ClassManagementTools.cs` next to the class management endpoints: two thin adapters over the same service. Then `GraderApi/Mcp/` (the only MCP-specific code, ~200 lines)
 4. MCPJam (or the MCP Inspector) with `http://localhost:5100/mcp`: browse tools and annotations, call a tool
 5. The swap: the stdio config from step 9 → the HTTP config (or `claude mcp add --transport http`), then `/mcp` in Claude Code: the same tools. Ask something read-only
-6. `tech-docs/mcp.md`: the comparison table and the gotchas (the agent wrote about the missing Origin validation without being asked)
+6. `tech-docs/mcp.md`: both servers, how they differ, the gotchas (no auth, `GET /mcp` outside Development)
 
 Things to show/discuss:
 
 * **MCP over HTTP = another web API protocol:** every request is a POST with JSON-RPC in the body, and the headers (`Mcp-Method`, `Mcp-Name`) mirror the body so gateways can route and inspect without parsing it. Stateless 2026-07-28 needs no sticky sessions, so any instance behind a load balancer can answer any request
-* **Hexagonal architecture pays off:** REST endpoints and MCP tools are two adapters over the same use-case services. Business rules, error codes and validation are shared. The MCP-specific code (`GraderApi/Mcp/`) is ~220 lines
-* **llms.txt rule effect:** the prompt didn't mention it, yet the agent went to llms.txt when it needed a spec detail the SDK doesn't answer (GET → 405, `Origin`). For everything else, the cloned SDK source was the better source. Both rules came from AGENTS.md
+* **Hexagonal architecture pays off:** REST endpoints and MCP tools are two adapters over the same use-case services. Business rules, error codes and validation are shared. The MCP-specific code (`GraderApi/Mcp/`) is ~200 lines
+* **llms.txt rule effect:** the prompt didn't mention it. The agent used llms.txt only when it needed a spec detail the SDK doesn't answer (an earlier rehearsal: `GET /mcp`, `Origin`); in the last rehearsal the cloned SDK docs and source answered everything. Both rules came from AGENTS.md – the agent picks the source that fits
 * **No installation for non-technical users** (talking point, no live demo): a remote MCP server is just a URL in the client (e.g. VS Code, Claude Desktop, Cursor). Real-world examples: the [Microsoft Learn MCP server](https://learn.microsoft.com/training/support/mcp) (`https://learn.microsoft.com/api/mcp`, no sign-in), the [remote GitHub MCP server](https://github.com/github/github-mcp-server) (`https://api.githubcopilot.com/mcp/`, OAuth), and the [MCP Registry](https://registry.modelcontextprotocol.io/). Compare this with step 9: .NET SDK, global tool, local config
 * **Security:**
-  * `/mcp` has **no auth** and no `Origin` validation (the spec's DNS rebinding MUST). Anyone who can reach the port can call `reset-demo-data`. Localhost only, never expose it publicly
-  * OAuth for remote MCP servers comes in a later step
-  * The agent flagged the Origin gap itself and asked instead of changing `AllowedHosts` for the whole API
+  * `/mcp` has **no auth** and no `Origin` validation (the spec's DNS rebinding MUST). Anyone who can reach the port can call `demo_data_replace`. Localhost only, never expose it publicly
+  * OAuth for remote MCP servers: see "What's next" at the end
 * **stdio vs. HTTP:** see the table above. stdio for local resources and one user; HTTP for central deployment, many users and no installation
-* **Tool granularity:** the tools mirror the API 1:1. In 9c that cost 50 tool calls (10× `get-exams`, 40× `get-exam`). Remote MCP has no shell to post-process results, so task-oriented tools (e.g. "averages per student and course") would pay off. The API shape is not automatically a good tool shape
-* **Duplication CLI ↔ API:** descriptions and instructions are copied, and a test guards names, titles, descriptions and annotations. But parameter descriptions already differ, and the test doesn't catch that. Step 11 replaces the copies with one shared tool catalog
+* **Tool granularity:** the tools mirror the API 1:1. In 9c that cost 52 tool calls (10× `exams_list`, 40× `exams_get`). Remote MCP has no shell to post-process results, so task-oriented tools (e.g. "averages per student and course") would pay off. The API shape is not automatically a good tool shape
+* **Duplication CLI ↔ API:** descriptions and instructions are copied, and a test guards names, descriptions and annotations. Parameter descriptions are not covered. Step 11 turns the API's tools into one shared catalog for MCP and the in-app agent
 * **Protocol eras in practice:**
   * Claude Code 2.1.283 speaks 2026-07-28 (`server/discover`)
   * the MCP Inspector defaults to the legacy `initialize`, and the SDK still answers it
-  * one SDK deviation: the unsupported-version error comes with HTTP 200 instead of 400
 
 Learnings:
 
@@ -1084,9 +986,9 @@ Learnings:
 * stdio MCP = a local fancy CLI; HTTP MCP = a remote web API protocol (central deployment, no installation, needs auth)
 * Keep tools plain (methods + descriptions) and the protocol in a thin layer. That makes the tools reusable beyond MCP
 * Guard duplicated contracts with a test, or better, don't duplicate them (step 11)
-* Cost: ~$3.90 for the server-side MCP server incl. tests and docs
+* Cost: ~$5.30 for the server-side MCP server incl. tests and docs
 
-Outlook step 11: an in-app agent as another "UI". It starts with a refactoring into a shared tool catalog based on `AIFunction` (Microsoft.Extensions.AI) that feeds both the MCP server and a Microsoft Agent Framework agent. The agent is exposed via AG-UI to a simple self-built Angular client (`@ag-ui/client`, Markdown → HTML, a bit of CSS from the design system). No CopilotKit.
+Next (step 11): an in-app agent as another "UI", fed by the same tools – turned into a shared `AIFunction` catalog first.
 
 Links:
 
@@ -1096,6 +998,137 @@ Links:
 * MCP Inspector: [CLI](https://modelcontextprotocol.io/docs/2026-07-28/tools/inspector/cli), [Protocol eras](https://modelcontextprotocol.io/docs/2026-07-28/tools/inspector/protocol-eras); [MCPJam](https://www.mcpjam.com/) ([GitHub](https://github.com/MCPJam/inspector)); [Claude Code MCP](https://code.claude.com/docs/en/mcp)
 * [Hexagonal architecture (Alistair Cockburn)](https://alistair.cockburn.us/hexagonal-architecture/)
 * Step 11: [Microsoft.Extensions.AI](https://learn.microsoft.com/dotnet/ai/microsoft-extensions-ai), [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/), [AG-UI](https://docs.ag-ui.com/)
+
+## Step 11 – In-app AI assistant (Microsoft Agent Framework + AG-UI)
+
+Goal: an AI assistant **inside** Grader: a teacher asks questions in a chat, an agent answers with the tools of step 10. The agent is one more adapter of the same hexagon: REST (step 6), CLI (step 8), stdio MCP (step 9), HTTP MCP (step 10), and now an agent behind the **AG-UI** protocol with a lightweight self-built Angular chat. Three prompts: 11a refactors the tools into a shared catalog, 11b adds the agent and the AG-UI endpoint, 11c the Assistant area in the UI.
+
+Design decisions to discuss before the prompts:
+
+* **One tool catalog, several adapters:** the tools become `AIFunction`s (Microsoft.Extensions.AI), the common abstraction of the MCP C# SDK and the Microsoft Agent Framework. The MCP server adapts the catalog (annotations, errors), the agent gets the same functions – one description per tool, no drift
+* **Read-only agent:** the agent only gets the read tools; write tools stay MCP-only. Approval of destructive tools (`ApprovalRequiredAIFunction` → an AG-UI interrupt the UI must confirm) is a talking point, not part of the demo
+* **AG-UI:** an open event protocol between agent backend and UI (`RUN_STARTED`, `TEXT_MESSAGE_CONTENT`, `TOOL_CALL_START/ARGS/END/RESULT`, `RUN_FINISHED` as server-sent events). The client sends the full conversation with every run, so the backend is stateless
+* **No chat UI framework:** `@ag-ui/client` + `marked` + CSS from the design system. CopilotKit offers ready-made chat components (React, and meanwhile also Angular) – for a C#-focused workshop the self-built client shows what's going on under the hood
+* **LLM via OpenRouter** (`z-ai/glm-5.3-flash`, cheap and fast) over the OpenAI-compatible **Chat Completions** API: the most straightforward code. OpenRouter's Responses API is stateless and rejects `previous_response_id`, which the Agent Framework's Responses client relies on by default. The key comes from configuration (`OpenRouter:ApiKey`), never from the repo
+* **llms.txt again:** 11b has the agent research AG-UI with https://docs.ag-ui.com/llms.txt – the second llms.txt after MCP (step 9)
+* **Designs:** mockups 06–08 + `assistant.md` (chat layout, tool call rows with Running…/Done, the markdown subset, the composer)
+
+Prompt 11a (refactoring):
+
+```text
+Prepare an in-app AI agent with a refactoring: the tools of the Web API's MCP server become a shared tool catalog based on Microsoft.Extensions.AI (`AIFunction`), independent of MCP. The MCP server at /mcp uses it now, the agent of the next session will too.
+
+- Each tool is defined in one place: name, description, parameters and traits (read-only, destructive). The MCP server only adapts the catalog to MCP (annotations, errors) and has no tool definitions of its own.
+- Pure refactoring: /mcp offers and runs exactly the same tools as before, the existing tests stay green.
+- Exemplary test: a read-only tool of the catalog invoked as `AIFunction`, without MCP.
+- Update tech-docs/mcp.md.
+- Done when the tests and the QA script are green (no manual checks against a running API). Then commit directly to main.
+```
+
+Rehearsal 11a: ~6.5 min, 35 turns, $2.19, no questions.
+
+* Each tool is its method in the tool class, with `[Tool("classes_get", ToolEffect.Read)]` for name and effect and the existing `[Description]`s; `ToolCatalog` (`GraderApi/Tools`) turns them into `CatalogTool`s (`AIFunction` + `IsReadOnly`/`IsDestructive`/`IsIdempotent`) via `AIFunctionFactory`
+* `McpServerSetup` only wraps catalog tools (traits → annotations, errors → tool errors); the MCP-specific tool list is gone
+* Proof of "pure refactoring": a temporary snapshot test of the complete `/mcp` behavior (tool list incl. schemas and annotations, results, errors) before and after – byte-identical, deleted before the commit
+* Gotchas documented: `AIFunctionFactory` turns `string` results into JSON strings (`"Deleted class 7."` with quotes) and reflection doesn't guarantee method order
+
+Before 11b:
+
+* Copy the assistant design from the workshop materials and **commit it** (a rehearsal agent left uncommitted design files alone, "they looked like your work in progress"):
+
+  ```bash
+  cp <workshop-materials>/design-assistant/*.png spec/design/
+  cp <workshop-materials>/design-assistant/readme.md spec/design/assistant.md
+  git add spec/design && git commit -m "Add assistant design"
+  ```
+
+* Provide the OpenRouter key: `dotnet user-secrets set OpenRouter:ApiKey <key> --project GraderApi` (the agent enables user secrets in 11b – run it afterwards) or the environment variable `OpenRouter__ApiKey`
+
+Prompt 11b (agent + AG-UI endpoint):
+
+```text
+Add an AI assistant to the Web API: an agent built with Microsoft Agent Framework that answers a teacher's questions about classes, exams and results. The web UI will talk to it via the AG-UI protocol.
+
+- Research AG-UI with https://docs.ag-ui.com/llms.txt and add it to "Researching Documentation" in AGENTS.md.
+- The agent uses the read-only tools of the shared tool catalog; it never changes data.
+- LLM via OpenRouter's OpenAI-compatible Chat Completions API. API key from the configuration value `OpenRouter:ApiKey` (user secrets or environment variable, never in the repo), model `z-ai/glm-5.3-flash` in appsettings.json. Without a key, the app still starts and only the assistant reports an error.
+- Instructions: short answers in the markdown subset of spec/design/assistant.md; the newest school year unless the teacher names one; never invent data.
+- Exemplary test: an AG-UI run against the Web API in memory with a fake chat client that calls a tool; the tool call, its result and the answer appear in the event stream.
+- New tech docs article tech-docs/assistant.md (architecture, configuration, running it); update AGENTS.md and testing.md.
+- Done when the tests and the QA script are green (no manual checks against a running API or a real LLM). Then commit directly to main.
+```
+
+Rehearsal 11b: ~10 min, 41 turns, $3.45, no questions.
+
+* Research: `llms.txt` of AG-UI first (events, architecture, types), then `microsoft-docs` (Agent Framework + AG-UI in ASP.NET Core), NuGet versions, the Agent Framework source in `~/github/agent-framework`
+* `POST /api/assistant` (under `/api`, so the Angular dev proxy passes it through) via `MapAGUIServer`, excluded from the OpenAPI spec; `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` is still a preview (and depends on AG-UI's .NET SDK 0.0.6)
+* The agent (`AsAIAgent`, instructions: short answers in the markdown subset, newest school year, never invent data, never guess ids, read-only) gets the six read-only catalog tools; each tool call gets its own DI scope (the agent is a singleton, the tools need a fresh `DbContext`)
+* Expected tool errors reach the model as the same error JSON as MCP (`ToolError` moved out of the MCP code); without a key the app starts and the endpoint answers 503 `assistant-not-configured`
+* Tests: an AG-UI run through the in-memory API with a scripted fake chat client (tool call, result from the database, answer); the test setup blanks the key, so a developer's user secret never causes real LLM calls
+* Checked after the rehearsal with the real LLM: "Which students in class 2B have no result in the latest Mathematics exam?" → 4 tool calls (`school_years_list`, `classes_list`, `exams_list`, `exams_get`), streamed, correct (checked with SQL); "Please delete class 2B." → polite refusal, nothing changed
+
+Before 11c: API with the key running (second terminal) and demo data reset.
+
+Prompt 11c (Assistant area):
+
+```text
+Add the Assistant area to the web UI: a chat with the AI assistant of the Web API (mockups 06–08 and assistant.md in spec/design/).
+
+- Talk to the AG-UI endpoint with `@ag-ui/client` and render the markdown answers with `marked`; no chat UI framework. Answer text and tool calls appear while they stream in.
+- The conversation lasts until the teacher leaves the Assistant area.
+- Exemplary component test with a mocked agent: a tool call shows "Running…", then "Done", then the answer renders as markdown.
+- Inspect the result in a real browser (e.g. Claude in Chrome) at 1920×1080, in light and dark mode, with a real question to the assistant. Compare it with the mockups and fix the differences.
+- Keep tech-docs/ui.md up to date.
+- Done when the QA script is green. Then commit directly to main.
+```
+
+Rehearsal 11c: ~20 min (Claude Code with `--chrome`), 123 turns, $8.11, no questions → a candidate for a break.
+
+* `assistant/`: `conversation.ts` (AG-UI events → messages and tool call rows), `markdown.ts` (`marked` restricted to the design's subset: headings/code blocks as paragraphs, nested lists flattened, raw HTML as text, number columns right-aligned; the HTML still goes through Angular's sanitizer – the answers come from an LLM), `tool-call.ts` (native `<details>`, JSON cut after 8 lines)
+* **Protocol mismatch found in the browser:** the server's AG-UI .NET SDK (0.x) writes absent fields as `null`, the 1.0 client rejects them and fails the run → the client strips the `null`s before validation (test with a captured server stream)
+* `@ag-ui/client` pins rxjs 7.8.1 → an npm `overrides` entry, otherwise rxjs is bundled twice
+* Browser check in Chrome with the mockup's question and a follow-up ("Compare this with 2A."), light and dark; exact 1920×1080 screenshots with Playwright. Fixed: the ▸ marker rendered as a dot, a table column not right-aligned, the 6-line limit clipping 2 px
+* "Running…" only flashes with the real backend (tools take milliseconds) – the component test covers the state; no E2E test (it would need a real or faked LLM)
+
+Demo:
+
+```bash
+dotnet run --project GraderApi                  # terminal 1: API incl. assistant (key from user secrets)
+cd GraderWeb && npm start                       # terminal 2: http://localhost:4200/assistant
+curl -N http://localhost:5100/api/assistant -H 'Content-Type: application/json' -d '{
+  "threadId": "t1", "runId": "r1", "tools": [], "context": [], "forwardedProps": {},
+  "messages": [{ "id": "m1", "role": "user", "content": "Which classes are there?" }] }'
+```
+
+1. `curl -N`: the raw AG-UI event stream (`RUN_STARTED`, `TOOL_CALL_*`, `TEXT_MESSAGE_CONTENT` deltas, `RUN_FINISHED`)
+2. Assistant area: "Which students in 2B scored below 70 % in the latest Computer Science exam?" → tool call rows (unfold one: arguments + result), then the table; follow-up "Compare this with 2A."
+3. "Please delete class 2B." → the agent can't (read-only tools) and points to the Classes page
+4. Code: `GraderApi/Tools/ToolCatalog.cs` (one catalog), `GraderApi/Mcp/McpServerSetup.cs` and `GraderApi/Assistant/AssistantSetup.cs` (two adapters)
+5. `spec/design/assistant.md` vs. `GraderWeb/src/app/assistant/markdown.ts`: the design's markdown subset, enforced in code and in the agent's instructions
+
+Things to show/discuss:
+
+* **One catalog, several adapters:** the same `AIFunction`s feed the MCP server (external agents) and the in-app agent (AG-UI). A new tool is one method with a description
+* **AG-UI:** what REST is for CRUD, AG-UI is for agents and UIs – a standard event stream instead of a home-grown WebSocket protocol. The mismatch between the .NET SDK 0.x and the 1.0 client shows how young the ecosystem is (preview packages, renamed methods like `MapAGUI` → `MapAGUIServer`)
+* **Build vs. buy the chat UI:** self-built = ~800 lines of Angular (plus ~300 lines of tests) and full control over the design; CopilotKit (React, meanwhile Angular) = ready-made components, generative UI, shared state, human-in-the-loop out of the box
+* **Human in the loop:** write tools with `ApprovalRequiredAIFunction` → the run stops with an interrupt, the UI asks the teacher, the next run continues. The step 9/10 annotations (read-only, destructive) are the information you need for that decision
+* **Tool granularity again:** "Which three students had the lowest average result in Mathematics in 2025/26?" needs ~50 tool calls through 1:1 API tools. A small model like `glm-5.3-flash` got that question wrong in an earlier rehearsal (it lost track across 40 exam results) – task-oriented tools ("averages per student and course") would help more than a bigger model
+* **Model choice and cost:** a flash model is fast and cheap for the typical questions; the agent's instructions and read-only tools limit the damage when it's wrong. "Never invent data" in the instructions is not a guarantee
+* **llms.txt as a pattern:** MCP (step 9) and AG-UI (11b) – the agent reads the index first and fetches only the pages it needs
+
+Learnings:
+
+* The hexagon holds: an in-app agent is another adapter over the same tools and use-case services, like REST, CLI and MCP
+* Share tools, not protocols: `AIFunction` is the common denominator of MCP and the Agent Framework
+* AG-UI standardizes the agent ↔ UI stream; a lightweight client is enough for a workshop-sized chat
+* Read-only first; destructive tools need a human in the loop (AG-UI interrupts)
+* Cost: 11a ~$2.20, 11b ~$3.50, 11c ~$8.10; the assistant itself costs fractions of a cent per question with a flash model
+
+Links:
+
+* [AG-UI docs](https://docs.ag-ui.com/) ([llms.txt](https://docs.ag-ui.com/llms.txt)), [`@ag-ui/client`](https://www.npmjs.com/package/@ag-ui/client), [marked](https://marked.js.org/)
+* [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/), [AG-UI integration](https://learn.microsoft.com/agent-framework/integrations/by-component/ui/ag-ui/getting-started), [Microsoft.Extensions.AI](https://learn.microsoft.com/dotnet/ai/microsoft-extensions-ai)
+* [OpenRouter](https://openrouter.ai/docs) ([llms.txt](https://openrouter.ai/docs/llms.txt)), [CopilotKit](https://docs.copilotkit.ai/)
 
 ## What's next – authentication and authorization (experiments at home)
 

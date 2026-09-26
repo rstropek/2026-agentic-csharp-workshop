@@ -96,3 +96,5 @@ The Assistant area is built and committed to `main` as `6629608`, and `scripts/q
 - **The Assistant page loads a large script bundle** (about 150 kB transferred). It's al
 --- after step11c: branch=main head=6629608 Add the Assistant area to the web UI: chat with the AI assistant
 OK step11c
+committed step 11c
+=== done (19:34:06)
