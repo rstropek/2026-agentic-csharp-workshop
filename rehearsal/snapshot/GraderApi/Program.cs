@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.Json.Serialization;
+using GraderApi.Assistant;
 using GraderApi.ClassManagement;
 using GraderApi.DemoData;
 using GraderApi.ErrorHandling;
@@ -45,6 +46,8 @@ builder.Services.AddScoped<IDemoDataService, DemoDataService>();
 builder.Services.AddScoped<RequestValidator>();
 builder.Services.AddGraderTools();
 builder.Services.AddGraderMcpServer();
+// The AI assistant: an agent with the read-only tools, served over AG-UI at /api/assistant (see tech-docs/assistant.md).
+builder.Services.AddGraderAssistant();
 
 var app = builder.Build();
 
@@ -68,6 +71,7 @@ var api = app.MapGroup("/api");
 api.MapClassManagementEndpoints();
 api.MapExamEndpoints();
 api.MapDemoDataEndpoints();
+api.MapGraderAssistant();
 
 // The MCP server is no REST endpoint for the API clients, so it is not part of the OpenAPI spec.
 app.MapMcp("/mcp").ExcludeFromDescription();

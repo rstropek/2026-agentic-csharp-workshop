@@ -31,21 +31,21 @@ The concepts and the protocol are documented at https://modelcontextprotocol.io/
 
 ## The Web API's tool catalog
 
-The API's tools are defined once, independent of MCP, as `AIFunction`s of Microsoft.Extensions.AI: the MCP server at `/mcp` adapts them to MCP, an in-app agent can pass the same tools to a chat client (`ChatOptions.Tools`).
+The API's tools are defined once, independent of MCP, as `AIFunction`s of Microsoft.Extensions.AI: the MCP server at `/mcp` adapts them to MCP, the assistant passes the read-only ones to its agent (see [assistant.md](assistant.md)).
 
 - **One place per tool:** a method of a tool class, one per use-case area next to the endpoints (`ClassManagementTools`, ...). `[Tool(name, effect)]` gives the name and the effect (read, create, replace, delete), `[Description]` on the method and its parameters the description and parameter schema. No MCP types, parameters or logic. Like endpoints, tool methods are thin and call the service.
 - **`ToolCatalog`** (singleton, `GraderApi/Tools`) turns the methods into `CatalogTool`s with `AIFunctionFactory`, in the order of its list of tool classes and of the methods' declaration (the order of `grader mcp`). A new tool class goes into that list; `AddGraderTools` registers the catalog and the tool classes.
-- **Traits instead of MCP annotations:** `CatalogTool` is an `AIFunction` with `IsReadOnly`, `IsDestructive` and `IsIdempotent`, derived from the effect. Hosts decide what to do with them, e.g. ask the user before destructive calls (MCP: the host; in-app agent: e.g. `ApprovalRequiredAIFunction`).
-- **Tool classes come from the services of the call** (`AIFunctionArguments.Services`); they are scoped services, so a call gets the scoped services of the caller (the `DbContext` is per request, as for endpoints). A call without services throws. The MCP server passes the HTTP request's services; an agent passes those of its scope (e.g. `FunctionInvokingChatClient.FunctionInvocationServices`).
+- **Traits instead of MCP annotations:** `CatalogTool` is an `AIFunction` with `IsReadOnly`, `IsDestructive` and `IsIdempotent`, derived from the effect. Hosts decide what to do with them, e.g. ask the user before destructive calls (MCP: the host) or offer only read-only tools (the assistant).
+- **Tool classes come from the services of the call** (`AIFunctionArguments.Services`); they are scoped services, so a call gets the scoped services of the caller (the `DbContext` is per request, as for endpoints). A call without services throws. The MCP server passes the HTTP request's services; the assistant those of a scope per tool call.
 - **The endpoints' JSON options** (`JsonOptions`) read arguments and write results, so arguments are read like request bodies (required constructor parameters, strict numbers) and results are written like responses (explicit nulls). The SDK's defaults would omit nulls and accept numbers as strings.
 - **Results:** the API's JSON as `JsonElement`, texts (the confirmations of use cases without response body) as `string`, so models read them as text and not as JSON string.
-- **Errors are exceptions**, as thrown by the service or the validation; turning them into something the model can read is the host's job (MCP: `ToolErrors`).
+- **Errors are exceptions**, as thrown by the service or the validation. `ToolError` turns the expected ones into the error JSON the model reads (`code`, `message`, `status`, `errors`); how to return it is the host's job (MCP: a tool error via `ToolErrors`; assistant: the tool's result).
 - **Tools validate documents themselves** with `RequestValidator`, because no endpoint filter runs for them. It uses the metadata the validation source generator creates for the endpoints, so rules and error keys (`Students[0].LastName`) are the same. It throws if a type has no metadata (only types in endpoint signatures get some).
 
 ## The Web API's MCP server
 
 - **Only adapts the catalog to MCP** and has no tool definitions of its own: `McpServerSetup` (registration, handlers, instructions) wraps each `CatalogTool` with `McpServerTool.Create(AIFunction)` and turns its traits into annotations; `ToolErrors` turns exceptions into tool errors. Both live in `GraderApi/Mcp`.
-- **Error mapping:** `GraderLogicException` → its code and the HTTP status of the problem details; `RequestValidationException` → `validation-failed` with field errors; arguments that do not bind (missing parameter or property, wrong type, `null` document; `ArgumentException`, `JsonException`) → `invalid-request`; anything else → the SDK's generic tool error.
+- **Error mapping** (`ToolError` in `GraderApi/Tools`, shared with the assistant): `GraderLogicException` → its code and the HTTP status of the problem details; `RequestValidationException` → `validation-failed` with field errors; arguments that do not bind (missing parameter or property, wrong type, `null` document; `ArgumentException`, `JsonException`) → `invalid-request`; anything else → the SDK's generic tool error.
 - **Not in the OpenAPI spec** (`ExcludeFromDescription`): it is no REST endpoint, and the API clients must not change.
 - **No authentication**, like the rest of the API: whoever reaches the API can call every tool, incl. `demo_data_replace`.
 

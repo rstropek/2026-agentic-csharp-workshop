@@ -32,8 +32,10 @@ public sealed class GraderApiFactory : WebApplicationFactory<Program>
         return new(new DbContextOptionsBuilder<GraderDbContext>().UseSqlite(keepAliveConnection.ConnectionString).Options);
     }
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
-        builder.UseSetting("ConnectionStrings:Grader", keepAliveConnection.ConnectionString);
+    protected override void ConfigureWebHost(IWebHostBuilder builder) => builder
+        .UseSetting("ConnectionStrings:Grader", keepAliveConnection.ConnectionString)
+        // Tests never call the real LLM, even with an API key in the developer's user secrets (see tech-docs/assistant.md).
+        .UseSetting("OpenRouter:ApiKey", "");
 
     protected override void Dispose(bool disposing)
     {

@@ -4,6 +4,7 @@
     <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>e991bbbe-e13e-4922-9fb2-a8463273b871</UserSecretsId>
   </PropertyGroup>
 
   <!-- Build-time OpenAPI generation (Microsoft.Extensions.ApiDescription.Server).
@@ -20,7 +21,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Agents.AI.Hosting.AGUI.AspNetCore" Version="1.22.0-preview.260918.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0-rc.1.26425.128" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.1" />
     <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="11.0.0-rc.1.26425.128">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

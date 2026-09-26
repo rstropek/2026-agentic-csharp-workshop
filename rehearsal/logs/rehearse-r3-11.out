@@ -32,3 +32,31 @@ Both are in the gotchas in `tech-docs/mcp.md`.
 Separately: the Gmail, Google Calendar and Google Drive connectors need to be authorized in your claude.ai connector settings before they can be used. This task didn't need them.
 --- after step11a: branch=main head=39d289f Extract the API's MCP tools into an MCP-independent tool catalog
 OK step11a
+committed step 11a
+=== step 11b (19:04:08)
+Duration: 582s
+success turns: 41 cost: 3.446219800000001
+The web API now has an AI assistant, committed directly to main as `74aa5ba`. The tests and `scripts/qa.sh` are green (9/9 sections, including the E2E tests), with no runs against a real LLM or running API.
+
+**How it works**
+- **Endpoint:** the web UI sends `POST /api/assistant` and gets the AG-UI event stream back. It sits under `/api`, so the Angular dev proxy passes it through. It's left out of the OpenAPI spec (like `/mcp`), so the API clients and CLI don't change.
+- **Agent:** it gets only the read-only tools of the shared tool catalog, plus the instructions you listed (short answers in the markdown subset, newest school year by default, never invent data).
+- **Scoping:** the AG-UI endpoint creates the agent once and reuses it for all requests, but the tools need a fresh database context. So each tool call gets its own scope (code in `GraderApi/Assistant/AssistantSetup.cs`).
+- **Tool errors:** when a tool fails as expected (e.g. `class-not-found`), the model gets the same error JSON (code, message, status) the MCP server returns, not a bare "Function failed". I moved that error mapping out of the MCP server code into `Tools/ToolError.cs` so both use it.
+- **LLM:** OpenRouter, model `z-ai/glm-5.3-flash` in `appsettings.json`. The key is read from `OpenRouter:ApiKey`; I added a user-secrets ID to `GraderApi` for it.
+- **No key:** the app starts normally and only the assistant returns 503 with code `assistant-not-configured`. I did it this way because AG-UI hides error details, so the UI would otherwise only get a generic run error.
+
+**Tests**
+- **Exemplary test** (`AssistantIntegrationTests`): an AG-UI run through the in-memory API with a fake chat client. The fake first calls `school_years_list` and then answers. The test checks the tool call, its result (read from the database) and the answer in the event stream. It also checks that the model is offered only the six read-only tools.
+- **Additional test:** the 503 when no key is set.
+- **User secrets:** tests run in Development, which loads user secrets. The test setup now blanks the API key, so a developer's own key never leads to real OpenRouter calls. I checked this with a temporary fake key and removed it afterwards.
+
+**Docs:** the new `tech-docs/assistant.md` covers architecture, configuration, running and gotchas. AGENTS.md now lists AG-UI under "Researching Documentation", and `testing.md`, `mcp.md` and `web-api.md` are updated.
+
+**Things to know**
+- The AG-UI hosting package, `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` 1.22.0, has no stable release yet, so I used the preview.
+- That package still depends on AG-UI's .NET SDK 0.0.6, even though AG-UI 1.0 is out. I didn't force the newer version underneath it.
+- To try it yourself, run `dotnet user-secrets set "OpenRouter:ApiKey" "<key>" --project GraderApi`; there's a curl example in `assistant.md`.
+- The Gmail, Google Calendar and Google Drive connectors need authorizing in your claude.ai connector settings, and the Leo Wiki server f
+--- after step11b: branch=main head=74aa5ba Add AI assistant to the Web API: agent served over AG-UI
+OK step11b

@@ -4,7 +4,7 @@
 
 Grader is a grading app for teachers and students. The repository contains the following projects:
 
-- `GraderApi`: ASP.NET Core web API (OpenAPI with Scalar UI) that serves the backend. It also is an MCP server (Streamable HTTP at `/mcp`) with the same tools as `grader mcp`, so agents can use Grader without installing anything (see `tech-docs/mcp.md`).
+- `GraderApi`: ASP.NET Core web API (OpenAPI with Scalar UI) that serves the backend. It also is an MCP server (Streamable HTTP at `/mcp`) with the same tools as `grader mcp`, so agents can use Grader without installing anything (see `tech-docs/mcp.md`). It also hosts the AI assistant for the web UI: an agent (Microsoft Agent Framework) with the read-only tools, served over AG-UI at `/api/assistant` (see `tech-docs/assistant.md`).
 - `GraderLogic`: class library with the core grading domain logic and the database (EF Core, SQLite), used by the API.
 - `GraderTests`: xUnit v3 tests (Microsoft Testing Platform, NSubstitute, `Microsoft.AspNetCore.Mvc.Testing`) for the logic, API and CLI.
 - `GraderWeb`: Angular frontend (see `GraderWeb/AGENTS.md` for Angular-specific guidelines).
@@ -67,9 +67,10 @@ Use the installed skills to research up-to-date documentation. Priority:
 
 1. Microsoft technologies incl. .NET, ASP.NET Core, xUnit: Microsoft Learn CLI (not MCP) from the `microsoft-docs` skill. It runs as a sub-agent: always pass your question as the skill's argument.
 2. Angular: `angular-developer` skill.
-3. MCP (Model Context Protocol) concepts and the protocol: https://modelcontextprotocol.io/llms.txt, an index of the docs and the specification as Markdown pages. We support spec revision 2026-07-28 (use its pages, not older revisions). For the C# SDK (`ModelContextProtocol.Core`, `ModelContextProtocol.AspNetCore`), read its code and docs in `modelcontextprotocol/csharp-sdk` (see 5.).
-4. Other technologies (incl. NSubstitute): `ctx7` CLI (not MCP) from the `find-docs` skill.
-5. You may clone/pull GitHub repositories of used open source libraries into `~/github/<repo>` if you need to inspect their code or docs included in the repo.
+3. MCP (Model Context Protocol) concepts and the protocol: https://modelcontextprotocol.io/llms.txt, an index of the docs and the specification as Markdown pages. We support spec revision 2026-07-28 (use its pages, not older revisions). For the C# SDK (`ModelContextProtocol.Core`, `ModelContextProtocol.AspNetCore`), read its code and docs in `modelcontextprotocol/csharp-sdk` (see 6.).
+4. AG-UI (Agent User Interaction Protocol, between the web UI and the assistant): https://docs.ag-ui.com/llms.txt, an index of the docs and the specification as Markdown pages. For its server side in .NET (Microsoft Agent Framework's `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore`, AG-UI's `AGUI.Server`), read the code in `microsoft/agent-framework` and `ag-ui-protocol/ag-ui` (see 6.).
+5. Other technologies (incl. NSubstitute): `ctx7` CLI (not MCP) from the `find-docs` skill.
+6. You may clone/pull GitHub repositories of used open source libraries into `~/github/<repo>` if you need to inspect their code or docs included in the repo.
 
 ## Tech Docs
 
@@ -82,6 +83,7 @@ Use the installed skills to research up-to-date documentation. Priority:
 - [web-api.md](tech-docs/web-api.md): Web API architecture: use-case endpoints and services, data access, error codes and Problem Details, validation, HTTP/OpenAPI conventions, and API gotchas.
 - [cli.md](tech-docs/cli.md): the `grader` CLI: command design (mirrors the API), Kiota client and its generation, output/errors/exit codes for agents, the CLI side of the MCP server (`grader mcp`), building, installing and updating the global tool, CLI gotchas.
 - [mcp.md](tech-docs/mcp.md): the two MCP servers (`grader mcp` over stdio, the Web API at `/mcp` over Streamable HTTP): shared tool design, how they differ, the API's MCP-independent tool catalog (`AIFunction`s), connecting a client, MCP gotchas.
+- [assistant.md](tech-docs/assistant.md): the AI assistant (Microsoft Agent Framework agent, AG-UI at `/api/assistant`): architecture, tools and instructions, OpenRouter configuration and API key, running and testing it, gotchas.
 - [ui.md](tech-docs/ui.md): Web UI: design system (tokens, global CSS classes, base components and services), UI design decisions (theme, school year, loading/error states, editors, validation, confirmation), and UI gotchas.
 
 Maintain the tech docs as part of every change:

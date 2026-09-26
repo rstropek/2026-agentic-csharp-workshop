@@ -19,7 +19,7 @@ Endpoint (GraderApi)  →  use-case service interface (GraderLogic)  →  DbCont
 - **Use-case services** live in `GraderLogic`, one per use-case area, behind an interface, registered in DI (scoped, like the `DbContext`). Endpoint unit tests mock the interface (NSubstitute); service tests run against in-memory SQLite (see `database.md`).
 - Services own the queries, the business rules and the transaction boundary.
 - Folders per use-case area in both projects: `GraderLogic/<Area>/` (interface, service, request/response records), `GraderApi/<Area>/` (one `<Area>Endpoints.cs` with a `Map<Area>Endpoints` extension, called in `Program.cs`).
-- **Tools are the second entry point** next to endpoints: `GraderApi/<Area>/<Area>Tools.cs` offers the same use cases as plain methods for AI agents, turned into `AIFunction`s by the tool catalog and served by the MCP server at `/mcp` (see [mcp.md](mcp.md)). Like endpoints, they only call the service; they validate documents with `RequestValidator`, since no endpoint filter runs for them.
+- **Tools are the second entry point** next to endpoints: `GraderApi/<Area>/<Area>Tools.cs` offers the same use cases as plain methods for AI agents, turned into `AIFunction`s by the tool catalog, served by the MCP server at `/mcp` (see [mcp.md](mcp.md)) and, the read-only ones, used by the assistant (see [assistant.md](assistant.md)). Like endpoints, they only call the service; they validate documents with `RequestValidator`, since no endpoint filter runs for them.
 
 ## Data access
 
