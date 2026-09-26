@@ -1,0 +1,62 @@
+<h1 class="visually-hidden">Assistant</h1>
+
+<div
+  #history
+  class="history"
+  role="log"
+  aria-label="Conversation"
+  [attr.aria-busy]="answering()"
+  (scroll)="onScroll()"
+>
+  <div class="column">
+    @for (turn of turns(); track turn.id) {
+      @if (turn.role === 'user') {
+        <div class="message user">
+          <span class="column-header label">You</span>
+          <p class="user-text">{{ turn.text }}</p>
+        </div>
+      } @else {
+        <div class="message">
+          <span class="column-header label">Assistant</span>
+          @if (turn.toolCalls.length > 0) {
+            <div class="tool-calls">
+              @for (call of turn.toolCalls; track call.id) {
+                <app-tool-call [call]="call" />
+              }
+            </div>
+          }
+          @if (turn.text) {
+            <app-markdown [text]="turn.text" />
+          }
+        </div>
+      }
+    } @empty {
+      <p class="muted intro">
+        Ask about your classes, exams and results. The assistant can read the data of all school
+        years, but not change it.
+      </p>
+    }
+    @if (error(); as error) {
+      <p class="error-text" role="alert">The assistant could not answer. {{ error }}</p>
+    }
+  </div>
+</div>
+
+<form class="composer" (submit)="$event.preventDefault(); send()">
+  <div class="composer-row">
+    <textarea
+      #field
+      class="input field"
+      rows="1"
+      aria-label="Message to the assistant"
+      placeholder="Ask about classes, exams or results…"
+      [value]="draft()"
+      [disabled]="answering()"
+      (input)="draft.set(field.value)"
+      (keydown)="onKeydown($event)"
+    ></textarea>
+    <button type="submit" class="btn btn-primary send" [disabled]="answering()">
+      {{ answering() ? 'Answering…' : 'Send' }}
+    </button>
+  </div>
+</form>

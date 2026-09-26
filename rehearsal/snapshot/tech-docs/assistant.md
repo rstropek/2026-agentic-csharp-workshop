@@ -58,6 +58,7 @@ Tests never call a real LLM: `ScriptedChatClient` (`GraderTests`) replaces the k
 ## Gotchas
 
 - **The AG-UI hosting package is a preview** (`Microsoft.Agents.AI.Hosting.AGUI.AspNetCore`, no stable version exists yet). It depends on AG-UI's .NET SDK 0.0.6 (`AGUI.Server`), although AG-UI 1.0 is out; do not reference a newer `AGUI.*` version directly unless the hosting package supports it.
+- **The events contain `null` for absent optional fields** (`timestamp`, `metadata`, `parentRunId`, ...), which AG-UI 1.0 clients reject. The events are serialized with the SDK's own source-generated context, so our JSON options cannot change it; the web UI removes the `null`s (see [ui.md](ui.md#gotchas)).
 - **The method names changed:** `AddAGUIServer` and `MapAGUIServer`; older docs and blog posts use `AddAGUI`/`MapAGUI`, and `CreateAIAgent` instead of `AsAIAgent`.
 - **The agent is resolved when the endpoint is mapped**, not per request. A scoped agent registration does not work, and a test that replaces the chat client needs its own host (`WithWebHostBuilder`).
 - **AG-UI hides exception details:** any exception during a run becomes a generic `RUN_ERROR` event. That is why a missing API key is checked in an endpoint filter before the run starts.

@@ -1,0 +1,78 @@
+/* History on top (scrolls), composer pinned to the bottom of the window. */
+:host {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--header-height));
+}
+
+.history {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* One centered 880px column for the history and the composer. */
+.column,
+.composer-row {
+  width: 880px;
+  margin: 0 auto;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-6) 0 var(--space-8);
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 6px between the label and the content (the message's gap is for the blocks). */
+.label {
+  margin-bottom: -6px;
+  line-height: 1.3;
+}
+
+.user {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+}
+
+.user-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tool-calls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.composer {
+  padding: var(--space-4) var(--space-8) var(--space-6);
+  border-top: var(--rule-strong);
+}
+
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+/* 44px high, grows with the text up to 6 lines, then scrolls. */
+.field {
+  flex: 1;
+  min-height: 44px;
+  max-height: calc(6 * 1.4em + 22px + 2px); /* lines, padding, border */
+  padding-block: 11px;
+  resize: none;
+  field-sizing: content;
+}
+
+.send {
+  min-height: 44px;
+}

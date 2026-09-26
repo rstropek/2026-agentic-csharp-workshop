@@ -30,7 +30,7 @@ describe('App', () => {
     const element = fixture.nativeElement as HTMLElement;
 
     const areas = Array.from(element.querySelectorAll('nav a')).map((a) => a.textContent?.trim());
-    expect(areas).toEqual(['Classes', 'Exams', 'Settings']);
+    expect(areas).toEqual(['Classes', 'Exams', 'Assistant', 'Settings']);
     const select = element.querySelector('select') as HTMLSelectElement;
     expect(select.selectedOptions[0].textContent?.trim()).toBe('2026/27');
   });

@@ -39,6 +39,11 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'assistant',
+    title: 'Assistant · Grader',
+    loadComponent: () => import('./assistant/assistant').then((m) => m.Assistant),
+  },
+  {
     path: 'settings',
     title: 'Settings · Grader',
     loadComponent: () => import('./settings/settings').then((m) => m.Settings),

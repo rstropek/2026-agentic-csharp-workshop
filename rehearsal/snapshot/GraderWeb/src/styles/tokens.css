@@ -31,6 +31,7 @@
 
   /* Typography */
   --font-family: "Archivo", system-ui, sans-serif;
+  --font-family-mono: ui-monospace, Menlo, Consolas, monospace; /* system fonts, no download */
   --font-size-page-title: 42px;
   --font-size-detail-title: 32px;
   --font-size-section: 20px;

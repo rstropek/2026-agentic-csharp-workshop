@@ -60,3 +60,39 @@ The web API now has an AI assistant, committed directly to main as `74aa5ba`. Th
 - The Gmail, Google Calendar and Google Drive connectors need authorizing in your claude.ai connector settings, and the Leo Wiki server f
 --- after step11b: branch=main head=74aa5ba Add AI assistant to the Web API: agent served over AG-UI
 OK step11b
+committed step 11b
+=== step 11c (19:13:51)
+demo data reset (/api/demo-data)
+Duration: 1210s
+success turns: 123 cost: 8.106948999999998
+The Assistant area is built and committed to `main` as `6629608`, and `scripts/qa.sh` passes (all 9 sections, including E2E).
+
+**What it does**
+- **Assistant** is the third item in the navigation, before Settings. The history scrolls in the 880 px column and the composer stays at the bottom.
+- It talks to `/api/assistant` with `@ag-ui/client` and renders answers with `marked`, with no chat UI framework. Answer text and tool calls appear while they stream in.
+- Tool calls use native `<details>`, collapsed by default. They show "Running…" or "Done", and unfolded they show the arguments and result as JSON, cut after 8 lines with "… n more".
+- Markdown is limited to the design's subset. Headings and code blocks show as paragraphs, nested lists are flattened, and raw HTML is shown as text. Number columns in tables are right-aligned. The HTML still goes through Angular's sanitizer, since the answers come from an LLM.
+- The conversation lasts as long as the Assistant page is open. Leaving the area ends it and stops a running answer.
+
+**Problems I found and fixed along the way**
+- **The API's events were rejected by the client.** The server's AG-UI library writes empty optional fields as `null`, and `@ag-ui/client` 1.0 fails the whole run on those. The server writes events through a serializer our code can't configure, so the web UI now strips the `null`s before the client checks the events. A test replays a captured server stream through it, and I confirmed that test fails without the fix. This is documented in `ui.md` and `assistant.md`.
+- **rxjs was installed twice.** `@ag-ui/client` requires exactly rxjs 7.8.1, which broke the types and would have bundled rxjs twice. An `overrides` entry in `package.json` makes it use the app's rxjs.
+
+**Tests**
+- The component test uses a mocked agent: a tool call shows "Running…", then "Done", then the answer renders as markdown (bold text, a list item).
+- A second component test covers the error case: the message from the server's `assistant-not-configured` response is shown, and the field is enabled and focused again.
+- Small unit tests cover the markdown subset and the error messages.
+
+**Browser check**
+- In Chrome I asked the mockup's question, then a follow-up ("Compare this with 2A."), in light and dark mode. The tool calls, table, lists, the disabled composer with "Answering…", and scrolling to the newest message all match mockups 06–08.
+- The window can't get a 1080-pixel-high viewport on this screen, so I took the exact 1920×1080 screenshots with Playwright, as `ui.md` recommends.
+- Differences I fixed:
+  - The ▸ marker rendered as a dot.
+  - Table cells like "~69.6 %" weren't right-aligned.
+  - The field's six-line limit clipped the last line by 2 px.
+
+**Things to know**
+- **"Running…" is rarely visible with the real backend.** The tools finish within milliseconds, so it only flashes; the mocked test covers that state.
+- **The Assistant page loads a large script bundle** (about 150 kB transferred). It's al
+--- after step11c: branch=main head=6629608 Add the Assistant area to the web UI: chat with the AI assistant
+OK step11c
