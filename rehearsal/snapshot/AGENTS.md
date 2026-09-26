@@ -6,8 +6,9 @@ Grader is a grading app for teachers and students. The repository contains the f
 
 - `GraderApi`: ASP.NET Core web API (OpenAPI with Scalar UI) that serves the backend.
 - `GraderLogic`: class library with the core grading domain logic and the database (EF Core, SQLite), used by the API.
-- `GraderTests`: xUnit v3 tests (Microsoft Testing Platform, NSubstitute, `Microsoft.AspNetCore.Mvc.Testing`) for the logic and API.
+- `GraderTests`: xUnit v3 tests (Microsoft Testing Platform, NSubstitute, `Microsoft.AspNetCore.Mvc.Testing`) for the logic, API and CLI.
 - `GraderWeb`: Angular frontend (see `GraderWeb/AGENTS.md` for Angular-specific guidelines).
+- `GraderCli`: the `grader` command-line interface for the Web API (.NET global tool), for AI agents and humans. Calls the API through a generated Kiota client (see `tech-docs/cli.md`).
 
 Other folders:
 
@@ -33,6 +34,8 @@ dotnet publish GraderApi -c Release -o GraderApi/bin/publish
 cd GraderApi/bin/publish && ASPNETCORE_URLS=http://localhost:5200 dotnet GraderApi.dll
 ```
 
+CLI against the development API: `dotnet run --project GraderCli -- --help` (installing it as global tool `grader`: see `tech-docs/cli.md`).
+
 Use `npm start`/`npm run build`/`npm test` instead of the plain `ng` commands: the npm pre-scripts regenerate the API client first. Test commands: see `tech-docs/testing.md`.
 
 ## Quality Gate
@@ -44,6 +47,13 @@ scripts/qa.sh              # all checks and tests; exit code 0 = pass
 ```
 
 Do not suppress findings (`#pragma`, `NoWarn`, `biome-ignore`, severity changes) to make it pass unless the user agrees. Auto-fix formatting with `dotnet format` (repo root) and `npm run fix` (in `GraderWeb`). Details: `tech-docs/code-quality.md`, `tech-docs/testing.md`.
+
+## API Changes
+
+Every structural API change (endpoints, parameters, request/response shapes, status codes) includes, in the same change:
+
+- regenerating the CLI's API client with `scripts/generate-cli-client.sh` (never edit `GraderCli/ApiClient` by hand), then adapting the CLI commands: a command per new use case, updated descriptions (incl. error codes) and examples. `scripts/qa.sh` fails if the client is out of date.
+- committing the regenerated OpenAPI spec (any build of `GraderApi` updates it, see `tech-docs/api-client.md`).
 
 ## Technology Versions
 
@@ -65,9 +75,10 @@ Use the installed skills to research up-to-date documentation. Priority:
 
 - [testing.md](tech-docs/testing.md): testing strategy per layer (.NET unit/integration, Angular component, Playwright E2E), test commands, and testing gotchas.
 - [code-quality.md](tech-docs/code-quality.md): QA baseline (C# analyzers and code style, Biome, Angular compiler checks), where each is configured, and the reasons for deviations from defaults.
-- [api-client.md](tech-docs/api-client.md): how the OpenAPI spec is generated at build time and turned into the Angular API client, how to design endpoints for a good client, and generation commands.
+- [api-client.md](tech-docs/api-client.md): how the OpenAPI spec is generated at build time and turned into the Angular and CLI API clients, how to design endpoints for a good client, and generation commands.
 - [database.md](tech-docs/database.md): SQLite/EF Core data model, where constraints are defined, migrations (commands, design-time factory), test data generator, and database gotchas.
 - [web-api.md](tech-docs/web-api.md): Web API architecture: use-case endpoints and services, data access, error codes and Problem Details, validation, HTTP/OpenAPI conventions, and API gotchas.
+- [cli.md](tech-docs/cli.md): the `grader` CLI: command design (mirrors the API), Kiota client and its generation, output/errors/exit codes for agents, building, installing and updating the global tool, CLI gotchas.
 - [ui.md](tech-docs/ui.md): Web UI: design system (tokens, global CSS classes, base components and services), UI design decisions (theme, school year, loading/error states, editors, validation, confirmation), and UI gotchas.
 
 Maintain the tech docs as part of every change:

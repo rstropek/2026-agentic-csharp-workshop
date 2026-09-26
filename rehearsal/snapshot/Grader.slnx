@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="GraderApi/GraderApi.csproj" />
+  <Project Path="GraderCli/GraderCli.csproj" />
   <Project Path="GraderLogic/GraderLogic.csproj" />
   <Project Path="GraderTests/GraderTests.csproj" />
 </Solution>

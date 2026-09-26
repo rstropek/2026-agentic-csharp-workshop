@@ -30,6 +30,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GraderLogic\GraderLogic.csproj" />
     <ProjectReference Include="..\GraderApi\GraderApi.csproj" />
+    <ProjectReference Include="..\GraderCli\GraderCli.csproj" />
   </ItemGroup>
 
 </Project>

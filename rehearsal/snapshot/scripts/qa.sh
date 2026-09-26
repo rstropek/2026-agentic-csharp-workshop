@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the full QA baseline (formatting, linting/analyzers, builds, all tests) for .NET and Angular.
+# Runs the full QA baseline (formatting, linting/analyzers, builds, generated code, all tests) for .NET and Angular.
 # See tech-docs/testing.md (QA script) and tech-docs/code-quality.md.
 #
 # Usage: scripts/qa.sh [--skip-e2e]
@@ -97,6 +97,8 @@ npm_run_e2e_on_free_port() {
 run_section "dotnet format" . dotnet format --verify-no-changes
 run_section ".NET build" . dotnet build --no-incremental -tl:off -v:q -nologo
 DOTNET_BUILD=$LAST_STATUS
+# After the build, which regenerates the OpenAPI spec (see tech-docs/cli.md)
+run_section "CLI API client up to date" . scripts/generate-cli-client.sh --check
 if [ "$DOTNET_BUILD" = PASS ]; then
   run_section ".NET unit tests" . dotnet test --no-build --no-ansi --no-progress --filter-not-trait "Category=Integration"
   run_section ".NET integration tests" . dotnet test --no-build --no-ansi --no-progress --filter-trait "Category=Integration"

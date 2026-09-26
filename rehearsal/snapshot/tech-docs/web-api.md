@@ -4,7 +4,7 @@ Architecture principles and patterns for the Grader Web API (`GraderApi`) and it
 
 ## Use cases, not tables
 
-- Endpoints serve concrete use cases of a client (UI, later CLI or agent). There is no endpoint just because a table exists, and no generic CRUD per entity.
+- Endpoints serve concrete use cases of a client (UI, CLI and the agents using it, see `cli.md`). There is no endpoint just because a table exists, and no generic CRUD per entity.
 - Endpoints are grouped by use-case area (e.g. class management, grading), not by entity.
 - Request and response shapes are tailored to the use case. A response may combine several tables or contain computed values.
 - The server decides sort order per use case. Clients do not send filter, sort or paging expressions.
@@ -78,7 +78,7 @@ When a use case edits a parent together with its children as one unit, the clien
 - No generic repository or unit-of-work layer on top of EF Core: the `DbContext` already is the unit of work and its `DbSet`s are the repositories. The use-case service interface is the abstraction for mocking.
 - No optimistic concurrency: last write wins.
 - No authentication/authorization yet. Note that this includes the demo data endpoint, which deletes all data.
-- No write API for school years and courses (a CLI and agent support will follow).
+- No write API for school years and courses yet.
 
 ## Gotchas
 

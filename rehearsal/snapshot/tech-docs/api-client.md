@@ -2,16 +2,19 @@
 
 ## Approach
 
-The .NET code is the single source of truth for the HTTP API. The Angular client is generated from it; it is never written by hand.
+The .NET code is the single source of truth for the HTTP API. The API clients of the Angular app and the CLI are generated from it; they are never written by hand.
 
 ```
 GraderApi endpoints ──dotnet build──▶ GraderApi/openapi/GraderApi.json ──npm run generate:api──▶ GraderWeb/src/app/api/
-  (C# code)                            (committed)                                                (generated, not committed)
+  (C# code)                            (committed)                        │                        (ng-openapi, not committed)
+                                                                          └─scripts/generate-cli-client.sh──▶ GraderCli/ApiClient/
+                                                                                                   (Kiota, committed)
 ```
 
 1. **Spec at build time.** `Microsoft.Extensions.ApiDescription.Server` runs the app's entry point after every build of `GraderApi` and writes the OpenAPI document to `GraderApi/openapi/GraderApi.json` (configured in `GraderApi/GraderApi.csproj`).
 2. **Spec is committed.** It is the reviewable API contract: API changes show up as a diff of this file. Commit it together with the endpoint changes.
-3. **Client via ng-openapi.** `GraderWeb/openapi.config.ts` generates services and models into `GraderWeb/src/app/api/`. The npm `prestart`, `prebuild` and `pretest` scripts run the generator automatically, so the client is always in sync with the committed spec. The generated folder is gitignored.
+3. **Angular client via ng-openapi.** `GraderWeb/openapi.config.ts` generates services and models into `GraderWeb/src/app/api/`. The npm `prestart`, `prebuild` and `pretest` scripts run the generator automatically, so the client is always in sync with the committed spec. The generated folder is gitignored.
+4. **CLI client via Kiota.** Committed and regenerated only as a dedicated step with every structural API change; `scripts/qa.sh` checks that it is up to date. See [cli.md](cli.md#generating-the-client).
 
 ## Commands
 
@@ -21,6 +24,9 @@ dotnet build GraderApi
 
 # Regenerate the Angular client from the spec (also runs automatically before npm start/build/test)
 cd GraderWeb && npm run generate:api
+
+# Regenerate the CLI client from the spec (committed; after every structural API change)
+scripts/generate-cli-client.sh
 ```
 
 ## Usage in Angular
@@ -42,6 +48,8 @@ The generated TypeScript is only as good as the OpenAPI metadata. Reference: `Gr
 | Success response | `TypedResults` return types (`Ok<T>`, ...) | Typed return value (`Observable<T>`) |
 | Error responses | `.ProducesProblem(statusCode)` | Documented problem details response |
 | Descriptions | `WithSummary`, `WithDescription`, `[Description]` on parameters, records and properties | JSDoc comments on methods and models |
+
+Kiota (CLI) names its request builders after the route segments (`Api.Classes[id].Exams`), not after tags and `operationId`s. Routes following the HTTP conventions in [web-api.md](web-api.md#http-and-openapi-conventions) therefore give a readable CLI client, too.
 
 Expected domain errors are exceptions derived from `GraderLogic.GraderLogicException`; `GraderApi/ErrorHandling/GraderLogicExceptionHandler.cs` turns them into `400`/`404`/`409` problem details with an error `code` (see [web-api.md](web-api.md#errors)). Endpoints declare every status they can return: `.ProducesProblem(...)` for 404/409, `.ProducesValidationProblem()` for 400 on endpoints with a request body (validation problem details are a superset of problem details).
 

@@ -10,6 +10,7 @@ Every feature gets tests for the regular case **and** at least one error case, o
 | API unit tests | `GraderTests/Api` | xUnit v3, `GraderApiFactory`, NSubstitute | Real HTTP pipeline (routing, binding, validation, exception handler, JSON); use-case service interfaces replaced by substitutes. |
 | Database integration tests | `GraderTests/Data` | xUnit v3, in-memory SQLite | Data model, test data generator and use-case services against a real database with all migrations applied, private per test (see [database.md](database.md)). |
 | API integration tests | `GraderTests/Integration` | xUnit v3, `GraderApiFactory` | Everything real incl. an in-memory SQLite database. Also smoke tests that OpenAPI JSON and Scalar respond. |
+| CLI tests | `GraderTests/Cli` | xUnit v3, `CliRunner`, `GraderApiFactory` (NSubstitute for unit tests) | Complete CLI in memory (parsing, output, exit codes) against the API in memory; integration tests (tagged) with a real database, unit tests with mocked use-case services. |
 | Angular component tests | `GraderWeb/src/**/*.spec.ts` | Vitest via `ng test` (jsdom) | Component real; generated API services mocked. |
 | E2E tests | `GraderWeb/e2e` | Playwright (Chromium) | Everything real, production hosting setup. |
 
@@ -19,6 +20,7 @@ Design decisions:
 - **API tests use `GraderApiFactory`, never `WebApplicationFactory<Program>` directly.** It points the API to a private in-memory SQLite database, so tests never touch `data/grader.db` (the API migrates its database on startup). As a class fixture, the database is shared by all tests of a class: each test arranges its own data with unique names (e.g. its own school year) and must not rely on counts of the whole table.
 - **Error cases assert the `code` of the problem details**, never `title` or `detail` (see [web-api.md](web-api.md#errors)).
 - **Integration tests are tagged** with `[Trait("Category", "Integration")]` so they can be run or skipped separately. Untagged tests are unit tests.
+- **CLI tests run the CLI in memory:** `CliRunner` calls `CliApp.RunAsync` with a `CliContext` of string writers/readers and an `HttpClient` of `GraderApiFactory`. They assert the exit code and the error code on stderr, like API tests assert the `code`. Stdin is "a terminal" unless the test passes input. See [cli.md](cli.md).
 - **Angular tests mock the generated API services, not `HttpClient`.** Components only depend on the typed service (e.g. `ClassManagementService`), so tests provide `{ provide: XService, useValue: { method: vi.fn() } }` and stay independent of URLs. Error cases throw an `HttpErrorResponse` whose `error` is a problem details object, as the real API does.
 - **Angular tests are zoneless:** act, then `await fixture.whenStable()`, then assert. Do not use `fixture.detectChanges()`. Async actions that are not tracked as pending tasks (e.g. a Signal Forms submission awaiting a mocked API call) need one more macrotask (`await new Promise((r) => setTimeout(r))`) before the final `whenStable()`; see the `click` helper in `GraderWeb/src/app/classes/class-editor.spec.ts`.
 - **Component tests drive the DOM like a user:** set input values and dispatch `input` events, click buttons found by their accessible name (text or `aria-label`), assert rendered text, `aria-invalid` and focus. Route parameters are component inputs (`withComponentInputBinding`), so tests set them with `fixture.componentRef.setInput(...)`.
@@ -30,7 +32,7 @@ Design decisions:
 
 ## QA script
 
-`scripts/qa.sh` (repo root) runs the full QA baseline: `dotnet format` check, .NET build (analyzers, warnings as errors), .NET unit and integration tests, Biome, Angular build, Angular component tests and E2E tests. Linting and formatting are described in [code-quality.md](code-quality.md).
+`scripts/qa.sh` (repo root) runs the full QA baseline: `dotnet format` check, .NET build (analyzers, warnings as errors), a check that the CLI's generated API client is up to date (see [cli.md](cli.md#generating-the-client)), .NET unit and integration tests, Biome, Angular build, Angular component tests and E2E tests. Linting and formatting are described in [code-quality.md](code-quality.md).
 
 - Output: one `=== [n] <section> ===` block per tool ending in `--- PASS|FAIL|SKIP: <section>`, then `=== SUMMARY ===` and a final `QA RESULT: PASS|FAIL` line. Exit code `1` if any section failed.
 - Only output of **failing** sections is printed. Full logs of all sections are in `.qa-logs/` (gitignored, recreated on every run).
