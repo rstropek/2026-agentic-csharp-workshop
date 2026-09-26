@@ -653,10 +653,10 @@ Add a command-line interface (CLI) for Grader: a new .NET console project Grader
 - Package it as a .NET global tool (command `grader`).
 - Exemplary tests: a command running against the Web API in memory; an API error becoming an error message and exit code.
 - New tech docs article tech-docs/cli.md (incl. building, installing and updating the tool); update AGENTS.md, testing.md and api-client.md.
-- Done when the CLI works against the running API and the QA script is green. Then commit directly to main.
+- Done when the tests and the QA script are green (no manual checks against a running API). Then commit directly to main.
 ```
 
-Rehearsal 8a: ~14 min, no questions. Most of the time went into research (Kiota with the OpenAPI 3.2 spec, the System.CommandLine release matching the .NET 11 SDK, its help customization) and into trying every command against a real API on a temporary database.
+Rehearsal 8a: ~14 min, no questions. This rehearsal ran with the old last line ("Done when … works against the running API …"), so the agent also checked everything against a live API on its own; the prompt now asks for tests + QA only to save stage time, and the numbers will change with the next rehearsal. Most of the time went into research (Kiota with the OpenAPI 3.2 spec, the System.CommandLine release matching the .NET 11 SDK, its help customization) and into trying every command against a real API on a temporary database.
 
 What the agent built in 8a (details differ from run to run):
 
@@ -755,3 +755,344 @@ Links:
 * [System.CommandLine](https://learn.microsoft.com/dotnet/standard/commandline/)
 * [.NET tools](https://learn.microsoft.com/dotnet/core/tools/global-tools), [Create a .NET tool](https://learn.microsoft.com/dotnet/core/tools/global-tools-how-to-create), [`dotnet tool exec` / `dnx`](https://learn.microsoft.com/dotnet/core/tools/dotnet-tool-exec)
 * [skill-creator](https://github.com/anthropics/skills/tree/main/skills/skill-creator), [Claude Code skills](https://code.claude.com/docs/en/skills)
+
+## Step 9 – stdio MCP server in the CLI
+
+Goal: `grader mcp` turns the CLI from step 8 into a **stdio MCP server**. MCP over stdio is nothing more than a fancy CLI: the client starts a local process and talks JSON-RPC over stdin/stdout instead of passing arguments and reading exit codes. Three prompts: 9a builds the MCP server, 9b and 9c are the teacher requests from 8c/8d, this time fulfilled **through MCP tools only**.
+
+Why stdio? The server runs locally as the user who started it, so it can use local resources a remote server can't reach: files on disk (in 9a, save tools read a JSON file), the intranet, devices on the local network (IoT).
+
+Design decisions to discuss before the prompt:
+
+* **Client-side adapter:** the MCP server lives in the CLI, reuses its code (Kiota client, error handling) and still calls the Web API, so it is just another API client. Step 10 puts MCP on the server side (`/mcp` next to the REST endpoints, calling GraderLogic directly): same tools, different adapter
+* **One tool per CLI command, sharing the code:** a new command automatically becomes a tool, so there is no second implementation to keep in sync
+* **Tool annotations ↔ `--yes`, tool errors ↔ exit codes/stderr:** read-only/destructive hints let the client decide when to ask the human. API errors become tool results with `isError: true` and the API's error code, so the agent can react. They are not protocol errors
+* **Local file path:** save tools take the document inline or as the path of a local JSON file
+* **llms.txt instead of training data:** spec revision 2026-07-28 is newer than the model's training data. It is stateless: no `initialize` handshake, a new `server/discover`, and every request carries protocol version + client capabilities in `_meta`. [llms.txt](https://modelcontextprotocol.io/llms.txt) is an index (~350 lines) of all docs and spec pages as Markdown. The agent reads the index and fetches only the pages it needs. `llms-full.txt` puts everything in one file (~2.5 MB), which is far too big for a context window. The prompt has the agent add llms.txt to "Researching Documentation" in AGENTS.md, so later sessions (step 10) use it too
+* **Only the current revision:** no extra code for older revisions. Backward compatibility only if the SDK gives it for free, and it does: the C# SDK still answers the legacy `initialize` handshake
+* **No registration in the repo** (no `.mcp.json`): the presenter configures the clients live
+
+Prompt 9a (MCP server):
+
+```text
+Turn the CLI into an MCP server: `grader mcp` runs Grader as a stdio server for the Model Context Protocol, so AI agents can use it as tools.
+
+- Research MCP with https://modelcontextprotocol.io/llms.txt and add it to "Researching Documentation" in AGENTS.md as the source for MCP concepts and the protocol. Support the current spec revision (2026-07-28); don't write extra code for older revisions.
+- Use the official MCP C# SDK. One tool per CLI command, sharing the code with the commands. Tools that save a document take it inline or as a path to a local JSON file.
+- Mark read-only and destructive tools; API errors become tool errors incl. the error code.
+- Exemplary tests: a tool call through an MCP client against the Web API in memory; an API error becoming a tool error.
+- Update tech-docs/cli.md (incl. how to register the server in an MCP client) and testing.md; mention the MCP server in the grader-cli skill.
+- Done when the tests and the QA script are green (no manual checks against a running API). Then commit directly to main.
+```
+
+Rehearsal 9a: ~22 min, 81 turns, $5.52, no questions. This rehearsal ran with the old last line ("Done when … works against the running API …"), so the agent also checked everything against a live API on its own; the prompt now asks for tests + QA only to save stage time, and the numbers will change with the next rehearsal.
+
+* Research: the agent read the CLI code, then fetched `llms.txt` with `curl`. From the index it downloaded the spec pages it needed: changelog, tools, stdio transport, versioning, `server/discover`, schema
+* SDK: it looked up the SDK versions on NuGet and cloned the C# SDK into `~/github/csharp-sdk` (the AGENTS.md rule). It checked out the tag of the version it used and read the source and docs there
+* Verification: a scripted raw JSON-RPC session against a real API on a **temporary database** (the development data stayed untouched), plus the MCP Inspector CLI
+* One test run hung. The cause: the SDK's test client does not close the server's stdin. The agent fixed the test and documented this as a gotcha
+
+What the agent built in 9a (details differ from run to run):
+
+* **SDK:** `ModelContextProtocol.Core` 2.2.0, the low-level package (`McpServer.Create` + stdio transport, no generic host). 2.x supports 2026-07-28 since 2.0.0; 2.2.0 is the latest
+* **Protocol:** `server/discover` answers `supportedVersions: ["2026-07-28"]`, and a request with `2025-11-25` in `_meta` gets error `-32022` (UnsupportedProtocolVersion). The legacy `initialize` handshake still works, for free from the SDK
+* **CLI refactoring:** commands now write through an abstract `CommandContext`, either `CliCommandContext` (command line, stdout) or `McpToolContext` (tool arguments → tool result). Each command declares `CommandTraits` (read/create/save/delete), which become the annotations. The command list is the tool list: 13 commands = 13 tools, same names (`get-class`, `save-exam`, …), parameters in camelCase (`classId`)
+* **Save/create tools:** they take `document` (inline) or `documentPath` (local JSON file). The `document` schema is the request schema from the OpenAPI spec, embedded in the CLI, so the agent sees types, lengths and ranges
+* **Annotations:**
+  * `get-*`: read-only
+  * `create-*`: additive
+  * `save-*`: destructive, because it removes children missing from the document (the same reason the skill says "compare before saving")
+  * `delete-*` and `reset-demo-data`: destructive
+* **Errors:** a tool error (`isError: true`) whose text is the `--json` error, e.g. `{"code": "class-not-found", "message": "...", "status": 404}`. An unknown tool is a JSON-RPC error (`-32602`)
+* **Own `tools/list` handler:** the SDK's tool collection lists tools in hash order, but the spec asks for a deterministic order. Server instructions explain navigating by ids and saving complete documents
+* **Results:** the API JSON as text, without `structuredContent`/`outputSchema`. Kiota omits `null` values, so results would fail validation against the response schemas
+* **Tests (3):** a tool call through the SDK's MCP client against the in-memory Web API, an API error → tool error with code, and the annotations
+* **`tech-docs/cli.md`:** new MCP section covering tools, annotations, errors, registering in clients (`claude mcp add`, JSON for other clients, MCP Inspector) and gotchas, e.g. "stdout belongs to the protocol". `testing.md` updated
+* **AGENTS.md** ("Researching Documentation", new item 3):
+  > Model Context Protocol (concepts, protocol, spec): start at https://modelcontextprotocol.io/llms.txt (index of all docs pages as Markdown) and use the pages of the spec revision we support, `2026-07-28` (it differs substantially from earlier revisions, e.g. no `initialize` handshake). For the official C# SDK (`ModelContextProtocol.Core`), read its docs and source in `~/github/csharp-sdk` at the tag of the version we use (see 5.).
+* **Skill `grader-cli`:** the description now mentions `grader mcp`. A new section "Using the MCP server instead" covers ids as camelCase parameters, `document`/`documentPath`, no `--yes` (the client confirms) and errors as tool errors
+
+Before 9b:
+
+* Start the API in a second terminal (`dotnet run --project GraderApi`) and reset the demo data (Settings in the UI).
+* Build the CLI (`dotnet build GraderCli`).
+* Register the server in the client. Start the built dll, or `grader mcp` if the global tool is installed (`scripts/install-cli.sh`). In Claude Code (local scope, not in the repo; `claude mcp get grader` should show "Connected"):
+
+  ```bash
+  claude mcp add grader -- dotnet "$PWD/GraderCli/bin/Debug/net11.0/GraderCli.dll" mcp
+  ```
+
+* The rehearsal passed the server as a config file and disallowed the shell, so the agent could only use the MCP tools: `claude --mcp-config grader-mcp.json --strict-mcp-config --disallowedTools Bash`. The config file:
+
+  ```json
+  { "mcpServers": { "grader": { "type": "stdio", "command": "dotnet", "args": ["<repo>/GraderCli/bin/Debug/net11.0/GraderCli.dll", "mcp"] } } }
+  ```
+
+* MCPJam: `npx @mcpjam/inspector@latest` (the terminal install, because a stdio server is a local subprocess). Add a stdio server with command `dotnet` and arguments `<repo>/GraderCli/bin/Debug/net11.0/GraderCli.dll mcp`. MCPJam was not tried in the rehearsal. Should it still use the legacy `initialize` handshake, the SDK answers that too (tested with raw JSON-RPC).
+
+Prompt 9b (a teacher's request, new session, MCP tools only):
+
+```text
+I'm taking over a new class this school year, 1D. Students: Lena Huber, Jonas Gruber, Sophie Wagner, Elias Bauer, Mia Steiner, Felix Moser, Hannah Hofer, Paul Leitner.
+
+They wrote their first Mathematics test on 22 September 2026: Huber 78 %, Gruber 91.5 %, Wagner 64 %, Bauer 45 %, Steiner 88 %, Moser 72 %, Leitner 55 %. Hannah was sick.
+
+Please enter all of this in Grader.
+```
+
+Rehearsal 9b: 20 s, 9 turns, $0.25.
+
+* The agent loaded the `grader-cli` skill (its new MCP section applies), then called `get-school-years` → `get-classes` (checked that 1D is free) → `get-courses` → `create-class` (document inline) → `create-exam`
+* Hannah got no result instead of 0 %
+* Checked in the database: class 1D (2026/27) with 8 students; exam on 22 Sep 2026 with 7 results, none for Hannah Hofer
+
+Prompt 9c (a question, new session, MCP tools only):
+
+```text
+Which three students had the lowest average result in Mathematics in school year 2025/26? Show their class and average.
+```
+
+Rehearsal 9c: 2 min, 8 turns, $0.99.
+
+* The agent delegated the calculation to a subagent, which wanted to run a script. This session had no shell, so the subagent fetched the Mathematics exams of the 10 classes with 50 MCP calls (10× `get-exams`, 40× `get-exam`) and **computed the averages by hand**
+* Answer (checked with SQL: correct): Elise Mills 2B 57.37 %, Marie Murray 2A 57.80 %, Nia Sipes 4A 58.30 %
+* It added useful caveats: Nia Sipes has only 1 of 4 results, so it also named the runner-up with 3 results. It also said it had rechecked only the lowest five averages
+* The demo data is random, so names and numbers change with every reset (the 8d rehearsal had other students)
+
+Demo (API running; `dotnet build GraderCli`; tested in zsh and bash):
+
+```bash
+mcp() {  # send JSON-RPC requests (one per argument) to `grader mcp`; keep stdin open until the answers are out
+  { printf '%s\n' "$@"; sleep 2; } | dotnet GraderCli/bin/Debug/net11.0/GraderCli.dll mcp
+}
+META='"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}'
+mcp '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{'"$META"'}}' | jq 'del(.result.instructions)'
+mcp '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{'"$META"'}}' | jq -c '.result.tools[] | {name, annotations}'
+mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get-class","arguments":{"classId":99999},'"$META"'}}' | jq .result
+echo '{"name": "9Z", "students": [{"firstName": "Anna", "lastName": "Local"}]}' > /tmp/class-9z.json
+mcp '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create-class","arguments":{"schoolYearId":<year-id>,"documentPath":"/tmp/class-9z.json"},'"$META"'}}' | jq -r '.result.content[0].text'
+mcp '{"jsonrpc":"2.0","id":5,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2025-11-25"}}}' | jq -c .error
+npx -y @modelcontextprotocol/inspector --cli dotnet "$PWD/GraderCli/bin/Debug/net11.0/GraderCli.dll" mcp --method tools/call --tool-name get-class --tool-arg classId=99999
+```
+
+1. `dotnet GraderCli/bin/Debug/net11.0/GraderCli.dll mcp --help` (with the global tool: `grader mcp --help`)
+2. Raw JSON-RPC, one request after another:
+   * `server/discover` as the first request, with no `initialize`: supported versions, capabilities, `serverInfo` in `_meta`
+   * `tools/list`: 13 tools with their annotations
+   * a tool error with `isError` and the `code`
+   * `create-class` from a **local file**: take `<year-id>` from `get-school-years` (ids change with every reset)
+   * an old protocol version → error `-32022`
+3. MCPJam (or the MCP Inspector): browse tools, schemas (`document` vs. `documentPath`) and annotations, and call a tool
+4. AGENTS.md: the llms.txt entry. Then open https://modelcontextprotocol.io/llms.txt in the browser
+5. New session with only the MCP server → prompt 9b → check class 1D in the UI
+6. New session → prompt 9c
+
+Things to show/discuss:
+
+* **stdio MCP = fancy CLI:** same process, same code, same API calls; only the interface differs (JSON-RPC over stdin/stdout instead of argv, stdout and exit code). stdout belongs to the protocol, so a single stray `Console.WriteLine` breaks the server
+* **Gotcha when piping by hand:** the server stops at stdin EOF and drops requests still in flight. `printf '…' | grader mcp` prints nothing, hence the `sleep 2` in the demo
+* **Local resources:** `documentPath` reads a file on the user's machine. The same pattern reaches the intranet or IoT devices, which a remote server (step 10) can't
+* **Annotations are hints for the client** (e.g. ask before a destructive tool): the confirmation moves from `--yes` into the client
+* **MCP vs. CLI + skill** (talking point only): in 9c there was no shell, so 40 exams went through the context and the averages were computed by hand ($0.99). In 8d the CLI output went through Python instead, and only the result reached the model ($0.32). MCP shines where there is no shell. The skill still helped: 9b loaded `grader-cli`, which now explains the MCP variant
+* **Spec 2026-07-28 in the raw JSON:** `_meta` on every request, `server/discover`, `resultType`, `ttlMs`/`cacheScope`
+* **llms.txt:** the index vs. `llms-full.txt`. The agent fetched the index with `curl` and then only the pages it needed. The spec revision from July 2026 was implemented correctly without a single question
+* **AGENTS.md rules at work:** the agent cloned the SDK to read its source and protected the development data with a temporary database
+
+Learnings:
+
+* stdio MCP = a CLI with a JSON-RPC interface on stdin/stdout; it runs as the local user and can use local resources
+* Tool annotations and tool errors are the MCP counterparts of `--yes`, exit codes and stderr
+* One command list feeds both interfaces: no second implementation, no drift
+* llms.txt is an index of Markdown pages for agents. Current docs beat training data, and one line in AGENTS.md makes it stick
+* Cost: 9a ~$5.50; using the tools ~$0.25–1 per request
+
+Links:
+
+* [MCP llms.txt](https://modelcontextprotocol.io/llms.txt), [llms.txt proposal](https://llmstxt.org/)
+* MCP spec 2026-07-28: [Key changes](https://modelcontextprotocol.io/specification/2026-07-28/changelog), [Versioning](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning), [stdio transport](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio), [Discovery](https://modelcontextprotocol.io/specification/2026-07-28/server/discover), [Tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)
+* [MCP C# SDK](https://github.com/modelcontextprotocol/csharp-sdk), [ModelContextProtocol.Core on NuGet](https://www.nuget.org/packages/ModelContextProtocol.Core)
+* [MCP Inspector](https://modelcontextprotocol.io/docs/2026-07-28/tools/inspector), [MCPJam](https://www.mcpjam.com/) ([GitHub](https://github.com/MCPJam/inspector))
+* [Claude Code MCP](https://code.claude.com/docs/en/mcp)
+
+## Step 10 – Streamable HTTP MCP server in the backend
+
+Goal: the Web API itself becomes an MCP server. `POST /mcp` offers the same tools as `grader mcp` over **Streamable HTTP**. MCP over HTTP is nothing more than another protocol for web APIs: JSON-RPC in the body of a plain POST. Architecturally, it is **hexagonal** (ports and adapters): the layering from step 6 (thin endpoints → use-case services in GraderLogic) lets `/mcp` be a thin server-side adapter over the same services, right next to the REST endpoints. One prompt, no teacher requests. The demo runs with MCPJam and raw `curl`.
+
+stdio (step 9) vs. Streamable HTTP (step 10):
+
+| | stdio: `grader mcp` | Streamable HTTP: `/mcp` |
+|---|---|---|
+| What it is | a process the client starts; JSON-RPC over stdin/stdout | an HTTP endpoint; one POST per JSON-RPC request |
+| Users | one local user, the one who started it | many users over the network |
+| Reach | local resources: files (`documentPath`), intranet, IoT | only what the server can reach; deployed centrally |
+| Installation | .NET SDK + global tool (or the built dll) on every machine | none: a URL in the client |
+| Calls | the Web API over HTTP (Kiota client) | the GraderLogic services directly, like the endpoints |
+| Auth | the local user's credentials (here: none) | none yet; OAuth in a later step |
+
+Design decisions to discuss before the prompt:
+
+* **Server-side adapter:** the tools call the GraderLogic services directly, like the REST endpoints do. They don't use HTTP, Kiota or the CLI. A new protocol costs one thin layer, not a second implementation of the business logic
+* **Same tools as `grader mcp`:** names, descriptions and annotations are the same, and there is no `documentPath` because the server can't read the user's disk. An MCP client config can be swapped from `grader mcp` to `http://localhost:5100/mcp` and the same tools appear
+* **Only spec revision 2026-07-28 (stateless):** no sessions, no GET stream, every request carries protocol version and client capabilities in `_meta`, plus the `Mcp-Method`/`Mcp-Name` headers. No extra code for older revisions
+* **Tools are plain methods:** `[Description]` attributes, grouped by use-case area, with no MCP types and no MCP logic. Step 11 turns them into a shared tool catalog (`AIFunction`) for MCP and for an in-app agent
+* **llms.txt is not in the prompt:** does the AGENTS.md rule from step 9 make the agent use it anyway? (See the rehearsal)
+* **No auth yet:** never expose this endpoint publicly (see "Things to show/discuss")
+
+Prompt 10:
+
+```text
+Add an MCP server to the Web API: GraderApi offers the tools of `grader mcp` over Streamable HTTP at /mcp, so agents can use Grader without installing anything.
+
+- Same tool names, descriptions and annotations as the stdio server in GraderCli (without local file paths). The tools call the GraderLogic services directly, like the endpoints (see web-api.md).
+- Only the current spec revision (2026-07-28, stateless); don't write extra code for older revisions.
+- Tools are plain methods with descriptions, grouped by use-case area, without MCP-specific parameters or logic – an in-app agent will reuse them later.
+- Exemplary tests: a tool call against /mcp of the Web API in memory; a business rule violation becoming a tool error.
+- New tech docs article tech-docs/mcp.md (both MCP servers, how they differ, how to connect a client); update AGENTS.md and testing.md.
+- Done when the tests and the QA script are green (no manual checks against a running API). Then commit directly to main.
+```
+
+Rehearsal 10: ~11 min, 69 turns, $3.90, no questions while working. At the end it asked one question: should `/mcp` get Origin/Host validation? This rehearsal ran with the old last line ("Done when … works against the running API …"), so the agent also checked everything against a live API on its own; the prompt now asks for tests + QA only to save stage time, and the numbers will change with the next rehearsal.
+
+* **Research:** the agent read the CLI's MCP code, the API and the tech docs. Following the AGENTS.md rule, it read the SDK docs (stateless mode, tools) and source in `~/github/csharp-sdk`, plus the XML docs of `Microsoft.Extensions.Validation`
+* **llms.txt:** used, but late and targeted. After the implementation, it fetched `llms.txt` with `curl` and from it only the Streamable HTTP page, to check `GET /mcp` (→ 405) and the `Origin` rule. The protocol details themselves came from the SDK, which already implements 2026-07-28. The AGENTS.md rule did its job without being in the prompt
+* **Verification:** raw `curl` JSON-RPC against its own API instance on port 5177 with a **temporary database**, then a standalone MCP client (a file-based C# app with `#:package ModelContextProtocol.Core@2.2.0`) against the running API
+* **Small detours, no hangs:** a missing `using`, a wrong `dotnet test` filter syntax, and `GET /mcp` answered by the SPA fallback (404 instead of 405). The agent's own consistency test failed once because the SDK copies the title into `annotations.title`
+
+What the agent built (details differ from run to run):
+
+* **SDK:** `ModelContextProtocol.AspNetCore` 2.2.0, `WithHttpTransport` with `SessionMode = Stateless`, `MapMcp("/mcp")`, excluded from the OpenAPI spec (neither generated client changed)
+* **Tools (`GraderApi/Tools/`):**
+  * `ClassManagementTools`, `ExamTools` and `DemoDataTools`: one method per operation (`GetClass`, `SaveExam`, …) with `[Description]`, the use-case service injected, and GraderLogic records as parameters and results. No MCP types
+  * Tools are a boundary of their own, so they validate their request records themselves. `RequestValidator` runs the same data annotation validation as the minimal API endpoints
+* **MCP layer (`GraderApi/Mcp/`):**
+  * `GraderMcpServer` lists the 13 tools in the CLI's order with their `ToolTraits` (read/create/save/delete/reset → annotations). Names and titles come from the method names (`GetClass` → `get-class`, "Get class")
+  * Its own `tools/list`/`tools/call` handlers, as in step 9, for a deterministic order
+  * Arguments and results use the API's JSON options
+  * `ToolErrors` is a call-tool filter that turns exceptions into the stdio server's error JSON `{"code", "message", "status", "errors"}`
+  * `GET /mcp` is mapped explicitly to 405 (otherwise the SPA fallback answers)
+* **Duplication CLI ↔ API:**
+  * Descriptions and server instructions are **copied** as string literals (with a comment pointing to the CLI)
+  * A test, `ListTools_SameToolsAsCliMcpServer`, compares name, title, description, annotation hints and order of both servers. It doesn't compare parameters: those differ on purpose (`documentPath`)
+* **Tests (3):** a tool call over `/mcp` of the in-memory API (SDK `McpClient` with `HttpClientTransport`, pinned to 2026-07-28), a business rule violation (`create-exam` with an unknown course → tool error `course-not-found`, 400), and the tool list comparison with `grader mcp`. The CLI test helper moved to `CliMcpServerSession.cs`
+* **Docs:**
+  * New `tech-docs/mcp.md`: comparison table of both servers, what they share, tools as plain methods, the MCP layer, adding a tool, connecting clients, testing, and gotchas (GET vs. SPA fallback, no auth and no Origin validation, nullable types in schemas)
+  * AGENTS.md: project list, and the "API Changes" rule now includes the MCP tool
+  * testing.md, cli.md, hosting.md, web-api.md and the `grader-cli` skill updated
+
+Checked after the rehearsal (API on :5100 with demo data):
+
+* `server/discover` → `supportedVersions: ["2026-07-28"]`. Responses come as SSE (`event: message` + `data: {…}`) even for a single response
+* `tools/list`: 13 tools. Compared with `grader mcp`:
+  * **identical:** names, titles, descriptions, order, server instructions, and the four annotation hints (the HTTP server additionally has `annotations.title`)
+  * **input schemas equivalent:** same parameters apart from `documentPath`, same types, `maxLength` and 0–100 range
+  * **differences:**
+    * `document` is required over HTTP (stdio: `document` or `documentPath`)
+    * the HTTP schema has no field descriptions (stdio takes them from the OpenAPI spec)
+    * the `document` descriptions differ
+    * `get-exams.classId` says "see get-classes" over HTTP but "see class-management get-classes" in the CLI (a stale step 8 command name there). The comparison test doesn't cover parameter descriptions
+* **Errors:**
+  * unknown id → `isError` with `class-not-found`/404
+  * duplicate class name → `class-name-taken`/409
+  * name too long → `validation-failed` with field errors
+  * `classId: "abc"` → `invalid-request`
+  * unknown tool → JSON-RPC error `-32602` (a protocol error, not a tool error)
+* **Protocol checks:**
+  * a missing `Mcp-Method` header or an `Mcp-Name` that doesn't match the body → HTTP 400 with `-32020` (HeaderMismatch)
+  * a request without `_meta` → HTTP 400 with `-32602` ("must include `_meta/io.modelcontextprotocol/protocolVersion`")
+  * version `2025-11-25` in `_meta` → error `-32022` with `supported: ["2026-07-28"]`, but with HTTP 200 inside the SSE stream (the spec says 400; SDK behavior)
+  * the legacy `initialize` handshake still works, for free from the SDK
+  * `GET /mcp` → 405
+* **MCP Inspector CLI 2.8.0:** connects with its default era (legacy: `initialize`) and with `"protocolEra": "modern"` from a config file (`server/discover`). `--strict` reports 4 portability warnings: `type: ["integer","null"]` in the nullable ids/percentages
+* **Claude Code 2.1.283:** connects in the modern era (the API log shows `server/discover`, `tools/list`, `tools/call` from `claude-code`, no `initialize`). With the HTTP config, `--strict-mcp-config` and no shell, "List the classes of school year 2025/26" was answered correctly in 11 s, 4 turns, $0.13. `claude mcp add --transport http …` → `claude mcp get` shows "Connected"
+
+Before the demo:
+
+* Start the API (`dotnet run --project GraderApi`) and reset the demo data (Settings in the UI). The API is the MCP server; nothing else to build or install
+* MCPJam: add an HTTP server with URL `http://localhost:5100/mcp`. MCPJam was **not tried** in the rehearsal. Use the terminal install from step 9 (`npx @mcpjam/inspector@latest`); whether MCPJam's hosted web app can reach a localhost API (which sends no CORS headers) is untested
+* Claude Code (tested, local scope, not in the repo):
+
+  ```bash
+  claude mcp add --transport http grader-http http://localhost:5100/mcp    # claude mcp get grader-http → Connected
+  claude mcp remove grader-http                                           # after the demo
+  ```
+
+* The swap: the step 9 config file with only the server entry changed (tested with `claude -p --mcp-config grader-http.json --strict-mcp-config --disallowedTools Bash`):
+
+  ```json
+  { "mcpServers": { "grader": { "type": "stdio", "command": "dotnet", "args": ["<repo>/GraderCli/bin/Debug/net11.0/GraderCli.dll", "mcp"] } } }
+  { "mcpServers": { "grader": { "type": "http", "url": "http://localhost:5100/mcp" } } }
+  ```
+
+Demo (API running; tested in zsh and bash). Stateless means every call is a plain POST: no handshake, no session, no open connection. It's "just a web API":
+
+```bash
+mcp() {  # mcp <method> [<tool> <arguments-json>]: one JSON-RPC request = one plain HTTP POST
+  local h=(-H "Mcp-Method: $1") p=""
+  if [ -n "$2" ]; then h+=(-H "Mcp-Name: $2"); p='"name":"'"$2"'","arguments":'"$3"','; fi
+  curl -s http://localhost:5100/mcp "${h[@]}" -H 'MCP-Protocol-Version: 2026-07-28' \
+    -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+    -d '{"jsonrpc":"2.0","id":1,"method":"'"$1"'","params":{'"$p"'"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' \
+    | sed -n 's/^data: //p'
+}
+mcp server/discover | jq 'del(.result.instructions)'
+mcp tools/list | jq -c '.result.tools[] | {name, annotations}'
+mcp tools/call get-school-years '{}' | jq -r '.result.content[0].text' | jq -c .
+Y=$(mcp tools/call get-school-years '{}' | jq -r '.result.content[0].text' | jq -r '.[] | select(.name=="2025/26") | .id')
+mcp tools/call get-classes '{"schoolYearId": '"$Y"'}' | jq -r '.result.content[0].text' | jq -c '.[]'
+mcp tools/call get-class '{"classId": 99999}' | jq -c .result
+mcp tools/call create-class '{"schoolYearId": '"$Y"', "document": {"name": "1A", "students": []}}' | jq -r '.result.content[0].text'
+curl -s -w ' HTTP %{http_code}\n' http://localhost:5100/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -H 'MCP-Protocol-Version: 2026-07-28' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}'   # no Mcp-Method header → -32020, HTTP 400
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:5100/mcp                                          # GET → 405
+npx -y @modelcontextprotocol/inspector --cli http://localhost:5100/mcp --transport http --method tools/list
+```
+
+1. `curl -i` once (e.g. `server/discover`) to show the HTTP layer: `Content-Type: text/event-stream`, `X-Accel-Buffering: no`, the answer as one `data:` line
+2. Raw JSON-RPC:
+   * `server/discover`
+   * `tools/list`: the same 13 tools as step 9
+   * a successful call
+   * a tool error (`class-not-found`)
+   * a business rule violation: `1A` already exists → `class-name-taken`, 409. The same code the REST endpoint returns
+   * a missing header → HeaderMismatch
+3. `GraderApi/Tools/ClassManagementTools.cs` next to `ClassManagementEndpoints.cs`: two thin adapters over the same `IClassManagementService`. Then `GraderApi/Mcp/` (the only MCP-specific code)
+4. MCPJam (or the MCP Inspector) with `http://localhost:5100/mcp`: browse tools and annotations, call a tool
+5. The swap: the stdio config from step 9 → the HTTP config (or `claude mcp add --transport http`), then `/mcp` in Claude Code: the same tools. Ask something read-only
+6. `tech-docs/mcp.md`: the comparison table and the gotchas (the agent wrote about the missing Origin validation without being asked)
+
+Things to show/discuss:
+
+* **MCP over HTTP = another web API protocol:** every request is a POST with JSON-RPC in the body, and the headers (`Mcp-Method`, `Mcp-Name`) mirror the body so gateways can route and inspect without parsing it. Stateless 2026-07-28 needs no sticky sessions, so any instance behind a load balancer can answer any request
+* **Hexagonal architecture pays off:** REST endpoints and MCP tools are two adapters over the same use-case services. Business rules, error codes and validation are shared. The MCP-specific code (`GraderApi/Mcp/`) is ~220 lines
+* **llms.txt rule effect:** the prompt didn't mention it, yet the agent went to llms.txt when it needed a spec detail the SDK doesn't answer (GET → 405, `Origin`). For everything else, the cloned SDK source was the better source. Both rules came from AGENTS.md
+* **No installation for non-technical users** (talking point, no live demo): a remote MCP server is just a URL in the client (e.g. VS Code, Claude Desktop, Cursor). Real-world examples: the [Microsoft Learn MCP server](https://learn.microsoft.com/training/support/mcp) (`https://learn.microsoft.com/api/mcp`, no sign-in), the [remote GitHub MCP server](https://github.com/github/github-mcp-server) (`https://api.githubcopilot.com/mcp/`, OAuth), and the [MCP Registry](https://registry.modelcontextprotocol.io/). Compare this with step 9: .NET SDK, global tool, local config
+* **Security:**
+  * `/mcp` has **no auth** and no `Origin` validation (the spec's DNS rebinding MUST). Anyone who can reach the port can call `reset-demo-data`. Localhost only, never expose it publicly
+  * OAuth for remote MCP servers comes in a later step
+  * The agent flagged the Origin gap itself and asked instead of changing `AllowedHosts` for the whole API
+* **stdio vs. HTTP:** see the table above. stdio for local resources and one user; HTTP for central deployment, many users and no installation
+* **Tool granularity:** the tools mirror the API 1:1. In 9c that cost 50 tool calls (10× `get-exams`, 40× `get-exam`). Remote MCP has no shell to post-process results, so task-oriented tools (e.g. "averages per student and course") would pay off. The API shape is not automatically a good tool shape
+* **Duplication CLI ↔ API:** descriptions and instructions are copied, and a test guards names, titles, descriptions and annotations. But parameter descriptions already differ, and the test doesn't catch that. Step 11 replaces the copies with one shared tool catalog
+* **Protocol eras in practice:**
+  * Claude Code 2.1.283 speaks 2026-07-28 (`server/discover`)
+  * the MCP Inspector defaults to the legacy `initialize`, and the SDK still answers it
+  * one SDK deviation: the unsupported-version error comes with HTTP 200 instead of 400
+
+Learnings:
+
+* Hexagonal architecture pays off: a new protocol is a thin adapter over the same logic
+* stdio MCP = a local fancy CLI; HTTP MCP = a remote web API protocol (central deployment, no installation, needs auth)
+* Keep tools plain (methods + descriptions) and the protocol in a thin layer. That makes the tools reusable beyond MCP
+* Guard duplicated contracts with a test, or better, don't duplicate them (step 11)
+* Cost: ~$3.90 for the server-side MCP server incl. tests and docs
+
+Outlook step 11: an in-app agent as another "UI". It starts with a refactoring into a shared tool catalog based on `AIFunction` (Microsoft.Extensions.AI) that feeds both the MCP server and a Microsoft Agent Framework agent. The agent is exposed via AG-UI to a simple self-built Angular client (`@ag-ui/client`, Markdown → HTML, a bit of CSS from the design system). No CopilotKit.
+
+Links:
+
+* MCP spec 2026-07-28: [Streamable HTTP](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http), [Transports](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports), [Key changes](https://modelcontextprotocol.io/specification/2026-07-28/changelog), [Versioning](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning), [Discovery](https://modelcontextprotocol.io/specification/2026-07-28/server/discover), [Tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools), [Authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)
+* [MCP Security Best Practices](https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices), [Connect to remote MCP servers](https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-remote-servers), [MCP llms.txt](https://modelcontextprotocol.io/llms.txt)
+* [MCP C# SDK](https://github.com/modelcontextprotocol/csharp-sdk), [ModelContextProtocol.AspNetCore on NuGet](https://www.nuget.org/packages/ModelContextProtocol.AspNetCore)
+* MCP Inspector: [CLI](https://modelcontextprotocol.io/docs/2026-07-28/tools/inspector/cli), [Protocol eras](https://modelcontextprotocol.io/docs/2026-07-28/tools/inspector/protocol-eras); [MCPJam](https://www.mcpjam.com/) ([GitHub](https://github.com/MCPJam/inspector)); [Claude Code MCP](https://code.claude.com/docs/en/mcp)
+* [Hexagonal architecture (Alistair Cockburn)](https://alistair.cockburn.us/hexagonal-architecture/)
+* Step 11: [Microsoft.Extensions.AI](https://learn.microsoft.com/dotnet/ai/microsoft-extensions-ai), [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/), [AG-UI](https://docs.ag-ui.com/)
