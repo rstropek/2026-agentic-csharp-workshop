@@ -61,6 +61,7 @@ When a use case edits a parent together with its children as one unit, the clien
 - Routes: `/api/...`, plural kebab-case nouns, at most one level of nesting (e.g. `/api/school-years/{schoolYearId}/classes`).
 - Success: `GET` 200, `POST` 201 with `Location`, `PUT` 200 with the saved document, `DELETE` 204.
 - Ids are the database's integer ids; dates are `DateOnly` (ISO `yyyy-MM-dd`).
+- Dates without a time stay ISO strings in every client, including the generated Angular client (see `api-client.md`). A date-only value has no time zone; converting it to a JavaScript `Date` makes it midnight UTC, which can show up as the previous day in the browser. Native `<input type="date">` uses the same string format.
 - Tags are use-case areas, and operation names are use cases (e.g. `SaveClass`, not `Put`). The generated Angular client (see `api-client.md`) then gets one service per area, with methods that read like use cases.
 - Every endpoint declares all its responses, including the error status codes.
 

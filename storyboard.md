@@ -15,6 +15,7 @@ How to use this storyboard:
 * Node.js 24 LTS + npm
 * Git, bash/zsh (macOS, Linux, WSL or Git Bash)
 * A coding agent that supports `AGENTS.md` and skills (e.g. Claude Code, GitHub Copilot, Codex)
+* For step 7: a browser the agent can control (e.g. Chrome with [Claude in Chrome](https://claude.com/chrome), `claude --chrome`). Set the browser zoom to **100%** and make the window at least 1920 px wide – the UI is designed for Full HD, and with a different zoom the agent has to emulate the viewport to compare it with the mockups
 
 ---
 
@@ -58,6 +59,8 @@ npx -y @angular/cli@latest new GraderWeb \
   --inline-style=false --inline-template=false --test-runner=vitest
 
 cd GraderWeb
+# Angular team's best practices for AI agents (overwrites an existing AGENTS.md)
+curl -fsSL https://angular.dev/assets/context/best-practices.md -o AGENTS.md
 npm install --save-dev @playwright/test ng-openapi
 npx playwright install chromium
 cd ..
@@ -72,7 +75,7 @@ Resulting structure:
 * `GraderLogic` – class library for logic and data access
 * `GraderApi` – ASP.NET Core Web API (minimal APIs), references `GraderLogic`; Scalar for API docs, `Microsoft.Extensions.ApiDescription.Server` writes the OpenAPI spec on build (`GraderApi/obj/GraderApi.json` until configured otherwise)
 * `GraderTests` – xUnit v3 on Microsoft Testing Platform (MTP), references `GraderLogic` + `GraderApi`; NSubstitute + analyzers, `Mvc.Testing` for integration tests
-* `GraderWeb` – Angular (zoneless, no SSR, plain CSS, standalone, strict, separate template/style files, routing, Vitest); Playwright + ng-openapi installed but not configured yet
+* `GraderWeb` – Angular (zoneless, no SSR, plain CSS, standalone, strict, separate template/style files, routing, Vitest); Playwright + ng-openapi installed but not configured yet; `GraderWeb/AGENTS.md` = the Angular team's best practices for agents (downloaded, not generated)
 
 Check:
 
@@ -89,6 +92,7 @@ Learnings:
   * v3 template configures MTP in `global.json` (`"test": { "runner": "Microsoft.Testing.Platform" }`)
   * Packages that follow the .NET release train (`ApiDescription.Server`, `Mvc.Testing`) need `--prerelease` while .NET 11 is in RC
   * `ng new` creates its own Git repo unless `--skip-git`; `--ai-config=none` and `--interactive=false` avoid prompts
+  * Instead of `--ai-config`, we download the Angular team's [best-practices.md](https://angular.dev/assets/context/best-practices.md) as `GraderWeb/AGENTS.md`: nested `AGENTS.md` files apply to their folder, so the Angular rules only load when the agent works in the frontend
   * `dotnet sln`/`dotnet new sln` creates `.slnx` (XML solution format) by default
   * .NET 10+ noun-first CLI syntax: `dotnet package add`, `dotnet reference add`
 
@@ -402,6 +406,7 @@ Walk through the article (`tech-docs/web-api.md`) – principles and patterns on
 * Data access: entities never leave GraderLogic, reads project into records, one request = one transaction; pattern for saving a parent with all its children (`PUT` with the complete document)
 * Errors: services translate DB errors into a few meaningful exceptions with stable error codes → central handler → Problem Details with a `code` member
 * Validation at the API boundary, HTTP + OpenAPI conventions (tags = use-case areas, operation names = use cases)
+* Dates without time stay ISO strings (`yyyy-MM-dd`) in every client, incl. the generated Angular client – a JavaScript `Date` is midnight UTC and can show the previous day. We added this rule after a rehearsal: step 3 had configured the generator with `Date`, and the mismatch only surfaced when the exams UI (step 7b) showed dates
 * "Deliberately not done": no PATCH/paging/OData, no generic repository/unit of work, no optimistic concurrency, no auth yet
 * Why no repository/unit of work? The `DbContext` already is both; a generic `IRepository<T>` leads back to table thinking. The use-case service interface is the seam for mocking. Agents like to generate repositories (training data) → decide it explicitly.
 
@@ -499,3 +504,125 @@ Links:
 * [EF Core testing strategies (incl. repository pattern)](https://learn.microsoft.com/ef/core/testing/choosing-a-testing-strategy), [Unit of Work (Fowler)](https://martinfowler.com/eaaCatalog/unitOfWork.html)
 * [Applying migrations (incl. at runtime)](https://learn.microsoft.com/ef/core/managing-schemas/migrations/applying), [Collations and case sensitivity](https://learn.microsoft.com/ef/core/miscellaneous/collations-and-case-sensitivity)
 * [Architecture decision records](https://adr.github.io)
+
+---
+
+## Step 7 – UI from design input
+
+Goal: the web UI for the use cases of step 6, built from a **designer handoff** (mockups + readme). Two prompts: 7a builds the UI foundation (design system, base components/services, tests, docs) plus the first use case area; 7b shows how short a follow-up prompt becomes once that foundation exists.
+
+Preparation: copy the design from the workshop materials (next to this storyboard) into the repo. Browser for the agent: zoom **100%**, window at least 1920 px wide (see prerequisites).
+
+```bash
+mkdir -p spec && cp -r <workshop-materials>/design spec/
+```
+
+Walk through the design (`spec/design/`):
+
+* `00-style-guide.png` + 5 mockups (class grid, class editor with validation errors, exams with results entry, loading state, dark mode); numbered annotations explain behavior, not just looks (save as one document, new rows on top, empty = no result, skeleton instead of spinner, …)
+* `readme.md` = the same design as **text**: color tokens as CSS variables (light + dark), typography, spacing, components, interaction states. Exact values beat reading pixels, and the readme wins if a mockup disagrees
+* Deliberately simple: desktop only (Full HD), native controls (`<select>`, `<input type="date">`), radius 0, no shadows, one icon
+* Not every screen is designed (e.g. settings, confirmation dialog, empty states) → the prompt names the important gaps, the agent extrapolates from the design system
+
+Prompt 7a (UI foundation + class management):
+
+```text
+Build the web UI of Grader. It replaces the calculator smoke test from the beginning (remove it completely: UI, endpoint, logic, tests).
+
+The designer handoff is in spec/design/ (readme.md + mockups). It shows the core design ideas, not every screen or state. For anything not shown, extrapolate from the design system and stay consistent.
+
+This session: the UI foundation and the first use case area, class management (the ClassManagement endpoints of the Web API). Exams follow in the next session; until then the Exams area is a placeholder.
+
+Design system first: derive reusable building blocks from the design – CSS variables (colors incl. dark theme, typography, spacing), global CSS classes, base components and base services (e.g. the global school year selection, turning Problem Details into user messages). Components never hard-code colors.
+
+Not in the design, but required:
+- A third top-level area "Settings" next to Classes and Exams: a button that resets the demo data (Web API), and a light/dark toggle (default: light).
+- A confirmation dialog before destructive actions (reset demo data, delete). No warnings about unsaved changes.
+- Server and network errors are shown to the user.
+
+Requirements:
+- Desktop only, optimized for Full HD. No phone layout, no i18n.
+- No fonts or icons from the internet at runtime (see the design readme).
+- Current Angular: signals, signal forms, resources.
+- All API access goes through the generated client (no hand-written URLs), in a way that can be mocked in component tests.
+- Exemplary component tests with a mocked API: one base component with behavior (e.g. the confirmation dialog); the class editor (save sends the full student list, validation, server error shown).
+- Playwright e2e test: add and edit students of a class. E2E tests run against a temporary SQLite database filled by the demo data generator, never against data/grader.db. Tests must not depend on each other. Update the QA script if needed.
+- When the UI works, fill the development database with demo data and inspect the UI in a real browser (e.g. Claude in Chrome) at 1920×1080, in light and dark mode. Compare it with the mockups and fix the differences.
+- New tech docs article tech-docs/ui.md with the UI design decisions (follow the tech docs rules in AGENTS.md); update testing.md and api-client.md; add ui.md to the tech docs index in AGENTS.md.
+- Done when the UI works and the QA script is green. Then commit directly to main.
+```
+
+Rehearsal 7a: ~20 min (Claude Code with `--chrome`), no questions, no real struggles – the time goes into scope, not detours. Rough split: 2 min researching current APIs (signal forms, icon package, Playwright setup order), 6–7 min writing the design system, base services, shell and class editor, 4 min in the browser comparing with the mockups, 2 min tests, the rest QA, docs and commit.
+
+What the agent built in 7a (details differ from run to run):
+
+* Calculator gone completely (UI, endpoint, logic, tests); `generate:api` now clears `src/app/api` first (ng-openapi does not delete files of removed services)
+* `src/styles/`: `tokens.css` (all colors, type, spacing as CSS variables; dark theme = `:root[data-theme='dark']` swaps only color tokens), global classes for typography, buttons, inputs, tables, skeletons, layout
+* `core/` base services: `SchoolYearService` (global context, newest by default), `ThemeService` (light default, `localStorage`, applied before Angular boots → no flash), `ConfirmService`, `NotificationService`, `api-errors.ts` (error `code` → user message, status 0 → "server cannot be reached", 5xx → generic)
+* `ui/` base components: `ConfirmDialog` (native `<dialog>`), `NotificationBar`, `LoadError` (with "Try again"), `FieldError` + a directive that sets `aria-invalid` (signal forms don't)
+* Classes: grid with skeleton while loading (switching the year cancels the pending request), editor with signal forms (new rows on top with focus, local remove, full-document save, "n fields need attention", focus on the first invalid field, server errors in place of the count, "name taken" at the field), delete with confirmation; Settings (theme toggle, reset demo data); Exams placeholder
+* Tests: 15 component tests (confirm dialog, class editor, error messages) with the generated `ClassManagementService` mocked; 3 Playwright tests against a temporary database (`<tmpdir>/grader-e2e.db`, deleted before each run, filled by a Playwright *setup project* via `POST /api/demo-data`; every test creates its own class → independent)
+* `tech-docs/ui.md` (tokens, global classes, base services, where errors are shown, page patterns, gotchas); `testing.md`, `api-client.md` updated
+
+Prompt 7b (Exams):
+
+```text
+Implement the Exams area of the UI (the Exams endpoints of the Web API; mockups 03 and 05 in spec/design/). Reuse the design system and base components; extend them where needed.
+
+- Exemplary component tests with a mocked API: the percentage field; entering results (save sends all results, a value out of range blocks saving).
+- Playwright e2e test: enter the results of an exam.
+- Inspect the result in a real browser (e.g. Claude in Chrome) at 1920×1080, in light and dark mode. Compare it with the mockups and fix the differences.
+- Keep tech-docs/ui.md up to date.
+- Done when the QA script is green. Then commit directly to main.
+```
+
+Rehearsal 7b: ~10 min (half of 7a) with a prompt of five lines – the agent read `ui.md` and reused tokens, classes, error handling, confirm dialog and the field error helpers.
+
+What the agent built in 7b (details differ from run to run):
+
+* Exams page: 400px list column (class filter, "New exam", exams by date, selected row highlighted) | editor (date, course, results in two columns, "n of m entered"); opening an exam by URL selects its class (and school year); a new exam starts with today and "No result" for every student
+* `ui/percentage-field/` (0–100, decimals, empty = `null`); the "n fields need attention" count became a shared helper, now also used by the class editor; messages for the exam error codes
+* Tests: percentage field + exam editor (save sends all results incl. `null`, 104 blocks saving and gets the focus); Playwright: open an exam, 104 is rejected, enter 67.5, save, still there after reload
+* Dates as strings end to end (rule in `web-api.md`, see step 6); without that rule the rehearsal agent found the mismatch only here: the client generator from step 3 typed `DateOnly` as `Date`, but the API sends `yyyy-MM-dd` strings
+
+Demo:
+
+```bash
+dotnet run --project GraderApi              # API on :5100
+cd GraderWeb && npm start                   # http://localhost:4200
+```
+
+1. Settings → Reset demo data (confirmation dialog) → Classes: grid for the newest school year; switch the year → skeleton
+2. Open a class: add a student (new row on top, focus in last name), clear a first name, Save → errors at the fields + count, focus on the first invalid field
+3. Remove a student who has exam results, Save → server rejection in place of the error count
+4. Exams: pick a class and an exam, enter 104 → "Must be 0–100"; Settings → dark mode; compare with `spec/design/05-dark-mode.png`
+5. `git show --stat HEAD~1` → size of 7a vs. 7b; `tech-docs/ui.md`
+
+Things to show/discuss:
+
+* Design readme vs. PNGs: the agent took exact values from the text and used the images for layout and behavior; it compared screenshots with the mockups and fixed real differences (a heading-size count, row heights 53 → 49px, a 2px taller date input)
+* The gaps were filled consistently with the design system: `ui.md` has a table "where each kind of error is shown"; the confirmation dialog is the native `<dialog>` (focus trap, Escape for free)
+* Agent decisions worth reviewing:
+  * `rxResource` with the generated (Observable-based) client instead of `httpResource` – what does "use resources" mean when the client is RxJS-based? (ng-openapi also has an httpResource plugin)
+  * `lucide-angular` only supports Angular ≤ 21 → official successor `@lucide/angular` (the design readme has been corrected since)
+  * Biome's `useValidAnchor` switched off for templates (`routerLink` sets `href` at runtime), reason documented in `testing.md`
+  * Scope beyond the prompt: more tests than asked (3 e2e tests in 7a), notification bar, "Try again" state – good or too much?
+* Gotchas the agent found and documented: signal forms don't set `aria-invalid`; jsdom has no `showModal()`; array rows in signal forms keep their state only if the item objects are reused; `npm test` regenerates the client and confuses a running `ng serve`; native date/number inputs follow the browser language ("75,5" in a German browser) even without i18n
+* Browser in the loop: the agent resized, measured element positions, toggled dark mode, delayed `fetch` to see the skeleton and simulated a network failure – verification a screenshot test would not do
+* Cost: 7a is the most expensive step so far (~$9 in the rehearsal, 7b ~$4)
+
+Learnings:
+
+* Agents can deal with design input: images for layout and behavior, a text readme for exact tokens and rules
+* Design system first: reusable tokens, classes, components and services make the follow-up prompt short (7b: 5 lines, half the time)
+* Designs are never complete → name the important gaps in the prompt and let the agent extrapolate from the design system
+* Close the loop visually: the agent inspects its own UI in a real browser and compares it with the mockups (Claude in Chrome, Playwright MCP, …)
+* Testable by design: generated client injected → mocked in component tests; e2e against a throwaway database filled by the existing demo data generator
+* Discuss: Where do designs live (Figma, PNGs, text)? Who keeps design and code in sync? Visual regression tests vs. agent-in-the-browser?
+
+Links:
+
+* [Angular signal forms](https://angular.dev/guide/forms/signals/overview), [Resources](https://angular.dev/guide/signals/resource), [RxJS interop (`rxResource`)](https://angular.dev/ecosystem/rxjs-interop)
+* [Claude in Chrome](https://code.claude.com/docs/en/chrome)
+* [Playwright project dependencies (setup)](https://playwright.dev/docs/test-global-setup-teardown), [Playwright web server](https://playwright.dev/docs/test-webserver)
+* [`<dialog>` element](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/dialog), [Fontsource Archivo](https://fontsource.org/fonts/archivo), [`@lucide/angular`](https://www.npmjs.com/package/@lucide/angular)

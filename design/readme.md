@@ -4,6 +4,8 @@ Designer handoff for the Grader web UI (Angular front end, step 7 of the worksho
 
 The black numbered squares on the mockups are **annotations**, not part of the UI. The note with the same number sits in the column to the right of each mockup.
 
+If a mockup and this readme disagree (e.g. CSS variable names in the style guide), this readme wins.
+
 ## Files
 
 | File | Content |
@@ -46,7 +48,9 @@ Don't use the accent for small body text; use the accent text color (`#AE1800`) 
 
 ## Dark mode
 
-Dark mode changes **only the color tokens**. Layout, type, spacing and components stay exactly the same, so every component has to take its colors from the variables (no hard-coded hex values). Follow the OS setting (`prefers-color-scheme`) by default.
+Dark mode changes **only the color tokens**. Layout, type, spacing and components stay exactly the same, so every component has to take its colors from the variables (no hard-coded hex values).
+
+The user switches the theme with a light/dark toggle in the Settings area (not shown in the mockups). **Light is the default**; the OS setting is ignored. The choice is remembered in the browser. The theme is set as an attribute on `<html>`, which switches the tokens:
 
 | Role | Light | Dark | Notes |
 | --- | --- | --- | --- |
@@ -65,22 +69,21 @@ Dark mode changes **only the color tokens**. Layout, type, spacing and component
 | Accent dark | `#7C1405` | `#FFC4B8` | Text on accent tint |
 
 ```css
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #201e1d;
-    --color-surface: #2d2b2b;
-    --color-text: #f3f2f2;
-    --color-muted: #bab6b6;
-    --color-placeholder: #9b9797;
-    --color-divider: color-mix(in srgb, #f3f2f2 32%, transparent);
-    --color-skeleton: #444141;
-    --color-accent: #ff563c;
-    --color-accent-hover: #ff9783;
-    --color-accent-pressed: #ffc4b8;
-    --color-error-text: #ff9783;
-    --color-accent-tint: #4d170e;
-    --color-accent-dark: #ffc4b8;
-  }
+:root[data-theme='dark'] {
+  color-scheme: dark; /* native controls (select, date picker) follow */
+  --color-bg: #201e1d;
+  --color-surface: #2d2b2b;
+  --color-text: #f3f2f2;
+  --color-muted: #bab6b6;
+  --color-placeholder: #9b9797;
+  --color-divider: color-mix(in srgb, #f3f2f2 32%, transparent);
+  --color-skeleton: #444141;
+  --color-accent: #ff563c;
+  --color-accent-hover: #ff9783;
+  --color-accent-pressed: #ffc4b8;
+  --color-error-text: #ff9783;
+  --color-accent-tint: #4d170e;
+  --color-accent-dark: #ffc4b8;
 }
 ```
 
@@ -175,22 +178,22 @@ All controls are native HTML elements, styled with the tokens.
 
 ## Icons
 
-Only one: × for removing a student row. Lucide `x`, 18px, stroke width 2, `currentColor`, via [lucide-angular](https://lucide.dev/guide/packages/lucide-angular) (bundled, no network at runtime):
+Only one: × for removing a student row. Lucide `x`, 18px, stroke width 2, `currentColor`, via [@lucide/angular](https://www.npmjs.com/package/@lucide/angular) (bundled, no network at runtime; the older `lucide-angular` package does not support current Angular versions):
 
 ```bash
-npm install lucide-angular
+npm install @lucide/angular
 ```
 
 ```ts
-import { LucideAngularModule, XIcon } from 'lucide-angular';
+import { LucideX } from '@lucide/angular';
 
 @Component({
-  imports: [LucideAngularModule],
+  imports: [LucideX],
   template: `<button class="btn btn-icon" aria-label="Remove student">
-               <lucide-icon [img]="XIcon" [size]="18" [strokeWidth]="2" />
+               <svg lucideX [size]="18" [strokeWidth]="2" aria-hidden="true"></svg>
              </button>`,
 })
-export class StudentRow { readonly XIcon = XIcon; }
+export class StudentRow {}
 ```
 
 ## Interaction states
