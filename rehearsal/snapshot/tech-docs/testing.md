@@ -6,16 +6,18 @@ Every feature gets tests for the regular case **and** at least one error case, o
 
 | Layer | Location | Tooling | What is real, what is mocked |
 | --- | --- | --- | --- |
-| Logic unit tests | `GraderTests/Logic` | xUnit v3 | Everything real; logic classes have no dependencies worth mocking. |
-| API unit tests | `GraderTests/Api` | xUnit v3, `WebApplicationFactory<Program>`, NSubstitute | Real HTTP pipeline (routing, binding, exception handler, JSON); logic interfaces replaced by substitutes. |
-| Database integration tests | `GraderTests/Data` | xUnit v3, in-memory SQLite | Real database with all migrations applied, private per test (see [database.md](database.md)). |
-| API integration tests | `GraderTests/Integration` | xUnit v3, `WebApplicationFactory<Program>` | Everything real. Also smoke tests that OpenAPI JSON and Scalar respond. |
+| Logic unit tests | `GraderTests/Logic` | xUnit v3 | Everything real, no database; for logic without dependencies worth mocking (e.g. translating database errors). |
+| API unit tests | `GraderTests/Api` | xUnit v3, `GraderApiFactory`, NSubstitute | Real HTTP pipeline (routing, binding, validation, exception handler, JSON); use-case service interfaces replaced by substitutes. |
+| Database integration tests | `GraderTests/Data` | xUnit v3, in-memory SQLite | Data model, test data generator and use-case services against a real database with all migrations applied, private per test (see [database.md](database.md)). |
+| API integration tests | `GraderTests/Integration` | xUnit v3, `GraderApiFactory` | Everything real incl. an in-memory SQLite database. Also smoke tests that OpenAPI JSON and Scalar respond. |
 | Angular component tests | `GraderWeb/src/**/*.spec.ts` | Vitest via `ng test` (jsdom) | Component real; generated API services mocked. |
 | E2E tests | `GraderWeb/e2e` | Playwright (Chromium) | Everything real, production hosting setup. |
 
 Design decisions:
 
-- **API "unit" tests go through HTTP.** Minimal API handlers are thin, so the value is in the pipeline behavior (status codes, problem details, parameter binding), not in calling handler methods directly. Mocks are injected per test via `WithWebHostBuilder` + `ConfigureTestServices` (see `GraderTests/Api/CalculatorEndpointTests.cs`).
+- **API "unit" tests go through HTTP.** Minimal API handlers are thin, so the value is in the pipeline behavior (status codes, problem details incl. `code`, parameter binding, validation), not in calling handler methods directly. Mocks are injected per test via `WithWebHostBuilder` + `ConfigureTestServices` (see `GraderTests/Api/ClassManagementEndpointTests.cs`).
+- **API tests use `GraderApiFactory`, never `WebApplicationFactory<Program>` directly.** It points the API to a private in-memory SQLite database, so tests never touch `data/grader.db` (the API migrates its database on startup). As a class fixture, the database is shared by all tests of a class: each test arranges its own data with unique names (e.g. its own school year) and must not rely on counts of the whole table.
+- **Error cases assert the `code` of the problem details**, never `title` or `detail` (see [web-api.md](web-api.md#errors)).
 - **Integration tests are tagged** with `[Trait("Category", "Integration")]` so they can be run or skipped separately. Untagged tests are unit tests.
 - **Angular tests mock the generated API services, not `HttpClient`.** Components only depend on the typed service (e.g. `CalculatorService`), so tests provide `{ provide: XService, useValue: { method: vi.fn() } }` and stay independent of URLs. Error cases throw an `HttpErrorResponse` whose `error` is a problem details object, as the real API does.
 - **Angular tests are zoneless:** act, then `await fixture.whenStable()`, then assert. Do not use `fixture.detectChanges()`.

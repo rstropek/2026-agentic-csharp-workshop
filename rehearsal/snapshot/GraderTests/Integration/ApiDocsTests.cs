@@ -8,7 +8,7 @@ namespace GraderTests.Integration;
 /// which is the default environment of <see cref="WebApplicationFactory{TEntryPoint}"/>).
 /// </summary>
 [Trait("Category", "Integration")]
-public class ApiDocsTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public class ApiDocsTests(GraderApiFactory factory) : IClassFixture<GraderApiFactory>
 {
     [Theory]
     [InlineData("/openapi/v1.json")]

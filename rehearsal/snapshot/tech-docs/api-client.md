@@ -27,7 +27,7 @@ cd GraderWeb && npm run generate:api
 
 - The client is registered once in `GraderWeb/src/app/app.config.ts` (`provideHttpClient(withInterceptorsFromDi())` + `provideDefaultClient({ basePath: '' })`).
 - Inject the generated service and call its methods; convert to promises with `firstValueFrom` where `async` code is more convenient (e.g. Signal Forms submission). Reference: `GraderWeb/src/app/calculator/calculator.ts`.
-- Errors arrive as `HttpErrorResponse`; for expected errors its `error` is a `ProblemDetails` object (generated model). Show `detail` (fallback `title`) to the user.
+- Errors arrive as `HttpErrorResponse`; for expected errors its `error` is a `ProblemDetails` object (generated model) with a `code` extension member. Decide on `code`; show `detail` (fallback `title`) to the user.
 
 ## Designing endpoints for a good client
 
@@ -41,7 +41,7 @@ The generated TypeScript is only as good as the OpenAPI metadata. Reference: `Gr
 | Error responses | `.ProducesProblem(statusCode)` | Documented problem details response |
 | Descriptions | `WithSummary`, `WithDescription`, `[Description]` on parameters, records and properties | JSDoc comments on methods and models |
 
-Expected domain errors are exceptions derived from `GraderLogic.GraderLogicException`; `GraderApi/ErrorHandling/GraderLogicExceptionHandler.cs` turns them into `400` problem details. Endpoints that can raise them declare `.ProducesProblem(StatusCodes.Status400BadRequest)`.
+Expected domain errors are exceptions derived from `GraderLogic.GraderLogicException`; `GraderApi/ErrorHandling/GraderLogicExceptionHandler.cs` turns them into `400`/`404`/`409` problem details with an error `code` (see [web-api.md](web-api.md#errors)). Endpoints declare every status they can return: `.ProducesProblem(...)` for 404/409, `.ProducesValidationProblem()` for 400 on endpoints with a request body (validation problem details are a superset of problem details).
 
 ## Gotchas
 
@@ -50,5 +50,5 @@ Expected domain errors are exceptions derived from `GraderLogic.GraderLogicExcep
 - **Interceptors:** the generated client registers a class-based interceptor via `HTTP_INTERCEPTORS`. It only runs with `withInterceptorsFromDi()`; client-specific interceptors passed to `provideDefaultClient` would silently be ignored without it.
 - **Build-time generation runs `Program.cs`** in the Development environment (`OpenApiGenerationEnvironment` in the csproj). Startup code that needs external resources (databases, secrets) must be skipped during generation, e.g. by checking `Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider"`.
 - **OpenAPI version:** .NET 11 emits OpenAPI 3.2 by default. ng-openapi handles the current spec; if a future spec breaks the generator, set `options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1` in `AddOpenApi`.
-- **Missing parameters:** generated methods skip `null`/`undefined` query parameters. The API then rejects the request with a `400` problem details without `detail` (binding failure). Validate required inputs in the UI before calling the API.
+- **Missing parameters:** generated methods skip `null`/`undefined` query parameters. The API then rejects the request with a `400` problem details without `detail` (binding failure, code `invalid-request`). Validate required inputs in the UI before calling the API.
 - Never edit files in `GraderWeb/src/app/api/`; they are overwritten. On a fresh clone the folder is missing (TypeScript errors in the IDE) until `npm run generate:api` or any `npm start/build/test` has run.

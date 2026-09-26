@@ -2,7 +2,6 @@ using System.Net;
 using GraderApi.Calculator;
 using GraderLogic.Calculator;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -13,7 +12,7 @@ namespace GraderTests.Api;
 /// <summary>
 /// Unit tests for the calculator endpoints: HTTP pipeline is real, <see cref="ICalculator"/> is mocked.
 /// </summary>
-public class CalculatorEndpointTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public class CalculatorEndpointTests(GraderApiFactory factory) : IClassFixture<GraderApiFactory>
 {
     private readonly ICalculator calculator = Substitute.For<ICalculator>();
 

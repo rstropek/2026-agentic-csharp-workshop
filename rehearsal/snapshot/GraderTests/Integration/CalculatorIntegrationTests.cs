@@ -1,7 +1,6 @@
 using System.Net;
 using GraderApi.Calculator;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace GraderTests.Integration;
 
@@ -9,7 +8,7 @@ namespace GraderTests.Integration;
 /// Integration tests for the calculator endpoints with the real logic.
 /// </summary>
 [Trait("Category", "Integration")]
-public class CalculatorIntegrationTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public class CalculatorIntegrationTests(GraderApiFactory factory) : IClassFixture<GraderApiFactory>
 {
     [Fact]
     public async Task Add_ReturnsSum()

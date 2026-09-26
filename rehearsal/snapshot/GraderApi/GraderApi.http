@@ -15,3 +15,55 @@ GET {{GraderApi_HostAddress}}/api/calculator/add?a=-1&b=2
 Accept: application/json
 
 ###
+
+# Replaces all data with demo data
+POST {{GraderApi_HostAddress}}/api/demo-data
+
+###
+
+GET {{GraderApi_HostAddress}}/api/school-years
+Accept: application/json
+
+###
+
+GET {{GraderApi_HostAddress}}/api/school-years/1/classes
+Accept: application/json
+
+###
+
+GET {{GraderApi_HostAddress}}/api/classes/1
+Accept: application/json
+
+###
+
+POST {{GraderApi_HostAddress}}/api/school-years/1/classes
+Content-Type: application/json
+
+{
+  "name": "9Z",
+  "students": [
+    { "id": null, "firstName": "Ada", "lastName": "Lovelace" }
+  ]
+}
+
+###
+
+# Error case: returns 409 with code class-has-exams (demo data classes have exams)
+DELETE {{GraderApi_HostAddress}}/api/classes/1
+
+###
+
+GET {{GraderApi_HostAddress}}/api/courses
+Accept: application/json
+
+###
+
+GET {{GraderApi_HostAddress}}/api/classes/1/exams
+Accept: application/json
+
+###
+
+GET {{GraderApi_HostAddress}}/api/exams/1
+Accept: application/json
+
+###

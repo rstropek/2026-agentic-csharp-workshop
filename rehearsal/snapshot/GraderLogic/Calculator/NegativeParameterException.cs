@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 namespace GraderLogic.Calculator;
 
 public class NegativeParameterException(string parameterName, int value)
-    : GraderLogicException($"Parameter '{parameterName}' must not be negative, but was {value}.")
+    : BusinessRuleException("negative-parameter", $"Parameter '{parameterName}' must not be negative, but was {value}.")
 {
     public string ParameterName { get; } = parameterName;
 

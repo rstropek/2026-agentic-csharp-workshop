@@ -4,7 +4,7 @@
 
 SQLite with EF Core (code first). Everything database-related lives in `GraderLogic/Data`: entities, `GraderDbContext`, migrations and `TestDataGenerator`. The original data model spec is `spec/2026-09-storyboard_erdiagram.md`; the entities and `GraderDbContext` are the current source of truth.
 
-The development database is `data/grader.db` in the repository root. The `data` folder is committed (`.gitkeep`), its content is gitignored.
+The development database is `data/grader.db` in the repository root. The `data` folder is committed (`.gitkeep`), its content is gitignored. `GraderApi` uses it unless the connection string `Grader` is configured (e.g. `ConnectionStrings__Grader="Data Source=/tmp/other.db"`), and applies pending migrations on startup. `POST /api/demo-data` replaces all data with test data.
 
 ## Design decisions
 

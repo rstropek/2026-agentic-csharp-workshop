@@ -58,6 +58,621 @@
           }
         }
       }
+    },
+    "/api/school-years": {
+      "get": {
+        "tags": [
+          "ClassManagement"
+        ],
+        "summary": "Lists the school years to pick from",
+        "description": "Returns all school years, newest first.",
+        "operationId": "GetSchoolYears",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SchoolYearSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/school-years/{schoolYearId}/classes": {
+      "get": {
+        "tags": [
+          "ClassManagement"
+        ],
+        "summary": "Lists the classes of a school year",
+        "description": "Returns the classes of a school year incl. their number of students, sorted by name.",
+        "operationId": "GetClasses",
+        "parameters": [
+          {
+            "name": "schoolYearId",
+            "in": "path",
+            "description": "Id of the school year.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClassSummary"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ClassManagement"
+        ],
+        "summary": "Creates a class incl. its students",
+        "description": "Creates a class in a school year. Students must not have an id. Errors: school-year-not-found (404), class-name-taken (409), unknown-student (400).",
+        "operationId": "CreateClass",
+        "parameters": [
+          {
+            "name": "schoolYearId",
+            "in": "path",
+            "description": "Id of the school year.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveClassRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/classes/{classId}": {
+      "get": {
+        "tags": [
+          "ClassManagement"
+        ],
+        "summary": "Opens a class incl. its students",
+        "description": "Returns a class incl. its students, sorted by last name and first name.",
+        "operationId": "GetClass",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "description": "Id of the class.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ClassManagement"
+        ],
+        "summary": "Saves a class incl. its students",
+        "description": "Saves a class incl. the complete list of its students: students without id are added, students with id are updated, students missing in the list are removed. Errors: class-not-found (404), unknown-student and duplicate-student (400), class-name-taken and student-has-results (409).",
+        "operationId": "SaveClass",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "description": "Id of the class.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveClassRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ClassManagement"
+        ],
+        "summary": "Deletes a class incl. its students",
+        "description": "Deletes a class incl. its students. Errors: class-not-found (404), class-has-exams (409).",
+        "operationId": "DeleteClass",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "description": "Id of the class.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/courses": {
+      "get": {
+        "tags": [
+          "Exams"
+        ],
+        "summary": "Lists the courses to pick from",
+        "description": "Returns all courses, sorted by name.",
+        "operationId": "GetCourses",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/classes/{classId}/exams": {
+      "get": {
+        "tags": [
+          "Exams"
+        ],
+        "summary": "Lists the exams of a class",
+        "description": "Returns the exams of a class incl. their course, sorted by date.",
+        "operationId": "GetExams",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "description": "Id of the class.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExamSummary"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Exams"
+        ],
+        "summary": "Creates an exam incl. its results",
+        "description": "Creates an exam of a class. Results are only allowed for students of the class. Errors: class-not-found (404), unknown-course, student-not-in-class and duplicate-student (400), exam-exists (409).",
+        "operationId": "CreateExam",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "description": "Id of the class.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveExamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{examId}": {
+      "get": {
+        "tags": [
+          "Exams"
+        ],
+        "summary": "Opens an exam incl. its results",
+        "description": "Returns an exam incl. one result per student of the class, sorted by last name and first name. The percentage is null for students without a result.",
+        "operationId": "GetExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Id of the exam.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Exams"
+        ],
+        "summary": "Saves an exam incl. its results",
+        "description": "Saves date, course and the complete list of results of an exam: results missing in the list or with a null percentage are removed. The class of an exam cannot be changed. Errors: exam-not-found (404), unknown-course, student-not-in-class and duplicate-student (400), exam-exists (409).",
+        "operationId": "SaveExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Id of the exam.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveExamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Exams"
+        ],
+        "summary": "Deletes an exam incl. its results",
+        "description": "Deletes an exam incl. its results. Errors: exam-not-found (404).",
+        "operationId": "DeleteExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Id of the exam.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo-data": {
+      "post": {
+        "tags": [
+          "DemoData"
+        ],
+        "summary": "Replaces all data with demo data",
+        "description": "Deletes all data and fills the database with generated demo data (school years, classes, students, courses, exams and results). All existing data is lost.",
+        "operationId": "ReplaceWithDemoData",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -75,6 +690,271 @@
           }
         },
         "description": "Result of an addition."
+      },
+      "ClassDetails": {
+        "required": [
+          "id",
+          "name",
+          "schoolYearId",
+          "schoolYearName",
+          "students"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id of the class.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the class, e.g. 1A."
+          },
+          "schoolYearId": {
+            "type": "integer",
+            "description": "Id of the school year the class belongs to.",
+            "format": "int32"
+          },
+          "schoolYearName": {
+            "type": "string",
+            "description": "Name of the school year the class belongs to."
+          },
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassStudent"
+            },
+            "description": "Students of the class, sorted by last name and first name."
+          }
+        },
+        "description": "A class incl. its students, sorted by last name and first name."
+      },
+      "ClassStudent": {
+        "required": [
+          "id",
+          "firstName",
+          "lastName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id of the student.",
+            "format": "int32"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name of the student."
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name of the student."
+          }
+        },
+        "description": "A student of a class."
+      },
+      "ClassSummary": {
+        "required": [
+          "id",
+          "name",
+          "studentCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id of the class.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the class, e.g. 1A."
+          },
+          "studentCount": {
+            "type": "integer",
+            "description": "Number of students in the class.",
+            "format": "int32"
+          }
+        },
+        "description": "A class in the list of classes of a school year."
+      },
+      "CourseSummary": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id of the course.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the course, e.g. Mathematics."
+          }
+        },
+        "description": "A course to pick from."
+      },
+      "ExamDetails": {
+        "required": [
+          "id",
+          "examDate",
+          "courseId",
+          "courseName",
+          "classId",
+          "className",
+          "results"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id of the exam.",
+            "format": "int32"
+          },
+          "examDate": {
+            "type": "string",
+            "description": "Date of the exam.",
+            "format": "date"
+          },
+          "courseId": {
+            "type": "integer",
+            "description": "Id of the course of the exam.",
+            "format": "int32"
+          },
+          "courseName": {
+            "type": "string",
+            "description": "Name of the course of the exam."
+          },
+          "classId": {
+            "type": "integer",
+            "description": "Id of the class that took the exam.",
+            "format": "int32"
+          },
+          "className": {
+            "type": "string",
+            "description": "Name of the class that took the exam."
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamStudentResult"
+            },
+            "description": "One entry per student of the class, sorted by last name and first name."
+          }
+        },
+        "description": "An exam incl. the results of all students of the class."
+      },
+      "ExamStudentResult": {
+        "required": [
+          "studentId",
+          "firstName",
+          "lastName",
+          "percentage"
+        ],
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "integer",
+            "description": "Id of the student.",
+            "format": "int32"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name of the student."
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name of the student."
+          },
+          "percentage": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Percentage (0 to 100); null if the student has no result.",
+            "format": "double"
+          }
+        },
+        "description": "The result of a student in an exam."
+      },
+      "ExamSummary": {
+        "required": [
+          "id",
+          "examDate",
+          "courseId",
+          "courseName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id of the exam.",
+            "format": "int32"
+          },
+          "examDate": {
+            "type": "string",
+            "description": "Date of the exam.",
+            "format": "date"
+          },
+          "courseId": {
+            "type": "integer",
+            "description": "Id of the course of the exam.",
+            "format": "int32"
+          },
+          "courseName": {
+            "type": "string",
+            "description": "Name of the course of the exam."
+          }
+        },
+        "description": "An exam in the list of exams of a class."
+      },
+      "HttpValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
       },
       "ProblemDetails": {
         "type": "object",
@@ -111,12 +991,144 @@
             ]
           }
         }
+      },
+      "SaveClassRequest": {
+        "required": [
+          "name",
+          "students"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 50,
+            "type": "string",
+            "description": "Name of the class, unique within the school year."
+          },
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SaveClassStudent"
+            },
+            "description": "All students of the class."
+          }
+        },
+        "description": "A class incl. the complete list of its students. Existing students that are missing in the list are removed."
+      },
+      "SaveClassStudent": {
+        "required": [
+          "id",
+          "firstName",
+          "lastName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Id of an existing student of the class; null for a new student.",
+            "format": "int32"
+          },
+          "firstName": {
+            "maxLength": 50,
+            "type": "string",
+            "description": "First name of the student."
+          },
+          "lastName": {
+            "maxLength": 75,
+            "type": "string",
+            "description": "Last name of the student."
+          }
+        },
+        "description": "A student of a class to save."
+      },
+      "SaveExamRequest": {
+        "required": [
+          "examDate",
+          "courseId",
+          "results"
+        ],
+        "type": "object",
+        "properties": {
+          "examDate": {
+            "type": "string",
+            "description": "Date of the exam.",
+            "format": "date"
+          },
+          "courseId": {
+            "type": "integer",
+            "description": "Id of the course of the exam.",
+            "format": "int32"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SaveExamResult"
+            },
+            "description": "Results of the students of the class; at most one per student."
+          }
+        },
+        "description": "An exam incl. the complete list of its results. Existing results that are missing in the list (or null) are removed."
+      },
+      "SaveExamResult": {
+        "required": [
+          "studentId",
+          "percentage"
+        ],
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "integer",
+            "description": "Id of a student of the exam's class.",
+            "format": "int32"
+          },
+          "percentage": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Percentage (0 to 100); null if the student has no result.",
+            "format": "double"
+          }
+        },
+        "description": "The result of a student to save."
+      },
+      "SchoolYearSummary": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id of the school year.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the school year, e.g. 2025/26."
+          }
+        },
+        "description": "A school year to pick from."
       }
     }
   },
   "tags": [
     {
       "name": "Calculator"
+    },
+    {
+      "name": "ClassManagement"
+    },
+    {
+      "name": "DemoData"
+    },
+    {
+      "name": "Exams"
     }
   ]
 }

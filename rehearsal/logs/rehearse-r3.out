@@ -115,3 +115,36 @@ The database is in place, `scripts/qa.sh` passes all 8 sections (E2E included), 
 - **I committed the spec** (`spec/2026-09-storyboard_erdiagram.md`), since `AGENTS.md` and 
 --- after step5: branch=main head=60c379c Add SQLite database with EF Core data model and test data generator
 OK step5
+committed step 5
+=== step 6 (16:50:31)
+Duration: 807s
+success turns: 53 cost: 4.284332
+All use cases from your list are implemented. The full QA script passed (8/8 sections, including E2E), and the work is committed directly to main as `2077369`.
+
+**Endpoints** (each area has a service interface in `GraderLogic/<Area>/` and an `<Area>Endpoints.cs` in `GraderApi/<Area>/`):
+
+| Area | Endpoints |
+|---|---|
+| ClassManagement | `GET /api/school-years`, `GET|POST /api/school-years/{id}/classes`, `GET|PUT|DELETE /api/classes/{id}` |
+| Exams | `GET /api/courses`, `GET|POST /api/classes/{id}/exams`, `GET|PUT|DELETE /api/exams/{id}` |
+| DemoData | `POST /api/demo-data` (returns 204) |
+
+**Errors:** every error response is a Problem Details object with a `code` field. The service errors are `class-name-taken`, `student-has-results`, `class-has-exams`, `exam-exists`, `unknown-student`, `unknown-course` and `student-not-in-class`, plus a "not found" code per resource. I also gave the framework's own errors a code: `validation-failed`, `invalid-request` (unreadable request body) and `unexpected-error`.
+
+**Tests:** 29 .NET tests pass. They cover everything you asked for, each with a regular and an error case. I added three tests beyond that:
+- an end-to-end test for saving an exam;
+- a test that calls the demo data endpoint twice;
+- a validation test for the class endpoint with the mocked service.
+
+**Additions and behaviour you might not expect:**
+- **API tests use a new test factory** (`GraderTests/GraderApiFactory.cs`). It gives the API tests their own in-memory database, because the API now updates its database schema on startup and would otherwise change `data/grader.db`. I switched the existing calculator and API docs tests to it as well.
+- **Missing fields in a request are now rejected with a 400.** Before, a missing `examDate` would have silently become 0001-01-01. The catch is that nullable fields must be sent explicitly as `null`, e.g. `"id": null` for a new student. The OpenAPI spec already marks them as required.
+- **The database connection string can be overridden** with `ConnectionStrings__Grader`. By default it is still `data/grader.db`.
+- **A query bug surfaced only in a manual run.** Opening an exam failed at runtime because SQLite can't run that query shape. I split it into two queries, added a test for it, and listed the issue as a gotcha in `web-api.md`.
+
+**Decisions to confirm:**
+1. **Emptying the database for demo data** deletes each table in bulk inside one transaction, instead of loading every row and saving once as `web-api.md` prescribes. It's still one all-or-nothing transaction, and loading about 11,000 rows just to delete them seemed wasteful. I recorded it as an exception in `web-api.md`; if you'd rather I stick strictly to the principle, it's a small change.
+2. **The demo data endpoint deletes all data and has no protection** (there's no authentication yet), including in production. I noted this in the doc.
+3. **Names are sorted case-sensitively, with umlauts after "z".** That's SQLite's default text ordering. It may 
+--- after step6: branch=main head=2077369 Add first Web API use cases: class management, exams, demo data
+OK step6

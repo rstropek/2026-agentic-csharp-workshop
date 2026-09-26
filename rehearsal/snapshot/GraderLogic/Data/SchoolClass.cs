@@ -9,9 +9,11 @@ namespace GraderLogic.Data;
 [Index(nameof(SchoolYearId), nameof(Name), IsUnique = true)]
 public class SchoolClass
 {
+    public const int NameMaxLength = 50;
+
     public int Id { get; set; }
 
-    [MaxLength(50)]
+    [MaxLength(NameMaxLength)]
     public required string Name { get; set; }
 
     public int SchoolYearId { get; set; }

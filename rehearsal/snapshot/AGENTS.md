@@ -67,6 +67,7 @@ Use the installed skills to research up-to-date documentation. Priority:
 - [code-quality.md](tech-docs/code-quality.md): QA baseline (C# analyzers and code style, Biome, Angular compiler checks), where each is configured, and the reasons for deviations from defaults.
 - [api-client.md](tech-docs/api-client.md): how the OpenAPI spec is generated at build time and turned into the Angular API client, how to design endpoints for a good client, and generation commands.
 - [database.md](tech-docs/database.md): SQLite/EF Core data model, where constraints are defined, migrations (commands, design-time factory), test data generator, and database gotchas.
+- [web-api.md](tech-docs/web-api.md): Web API architecture: use-case endpoints and services, data access, error codes and Problem Details, validation, HTTP/OpenAPI conventions, and API gotchas.
 
 Maintain the tech docs as part of every change:
 
