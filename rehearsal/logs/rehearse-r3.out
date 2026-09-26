@@ -1,3 +1,22 @@
 === step 1 (16:17:50)
 --- after step1: branch=main head=8bb9ea9 Initial project setup
 OK step1
+committed step 1
+=== step 2 (16:18:17)
+Duration: 29s
+success turns: 5 cost: 0.25164
+I added `AGENTS.md` at the repository root and committed it directly to `main`, together with the installed skills: 67 files changed, working tree is clean.
+
+**What's in `AGENTS.md`:**
+- **Overview:** Grader is a grading app for teachers and students. It lists the four projects: `GraderApi` (the ASP.NET Core API), `GraderLogic` (the grading logic library), `GraderTests` (xUnit v3 tests using NSubstitute) and `GraderWeb` (the Angular frontend). For Angular-specific rules it points to the existing `GraderWeb/AGENTS.md`.
+- **Technology versions:** the warning not to rely on training data, and the .NET 11 release-candidate rule for package versions, with a reference to `global.json`.
+- **Researching documentation:** your priority list — `microsoft-docs` (question passed as the skill's argument), then `angular-developer`, then `find-docs`/`ctx7`, then cloning repos into `~/github/<repo>`.
+
+**What else is in the commit:** `.agents/skills/` (angular-developer, find-docs, microsoft-docs, skill-creator), the `.claude/skills/` symlinks that point to them, and `skills-lock.json`.
+
+Claude Code reads `CLAUDE.md` automatically, but not `AGENTS.md`. If you want Claude Code to pick these instructions up, add a `CLAUDE.md` that contains just `@AGENTS.md`.
+
+Unrelated to this task: the Gmail, Google Calendar and Google Drive connectors need to be authorized in your claude.ai connector settings, and the Leo Wiki connector failed to connect this session because it timed out.
+--- after step2: branch=main head=04b55a4 Add AGENTS.md and install agent skills
+OK step2
+OK no CLAUDE.md
