@@ -31,8 +31,7 @@ Open **[storyboard.md](storyboard.md)**. It is the script of the day: for every 
 | [design/](design/) | Designer handoff for the web UI (mockups 00–05 + readme), input for step 7 |
 | [design-assistant/](design-assistant/) | Designs of the AI assistant chat (mockups 06–08 + readme), input for step 11 |
 | [rehearsal/](rehearsal/) | Every prompt of the storyboard, rehearsed with `claude -p`: prompts, scripts, the Grader repository after the last step (`snapshot/`, one commit per step), agent logs and `grader.bundle` (all steps as git tags – the fallback if something goes wrong on stage). See [rehearsal/README.md](rehearsal/README.md) |
-| [compose.yaml](compose.yaml), [auth/](auth/), [SimpleAuthDemoMcp/](SimpleAuthDemoMcp/) | Local Keycloak + a minimal protected C# MCP server: the starting point for adding authentication (see "What's next" in the storyboard and [auth/README.md](auth/README.md)) |
-| [.agents/skills/keycloak-auth/](.agents/skills/keycloak-auth/) | Agent skill for setting up the workshop Keycloak and explaining MCP authorization |
+| [.agents/skills/keycloak-auth/](.agents/skills/keycloak-auth/) | Agent skill for adding authentication at home ("What's next" in the storyboard): provisions a local Keycloak (Docker Compose + realm import) and explains MCP authorization and its gotchas. Attendees copy it into their Grader repository |
 
 The Grader app itself is not in this repository as source you edit: attendees create it from scratch with the storyboard. The rehearsal's result is in [rehearsal/snapshot/](rehearsal/snapshot/) (latest step) and [rehearsal/grader.bundle](rehearsal/grader.bundle) (every step).
 
