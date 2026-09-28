@@ -2,11 +2,16 @@
 # Step 1 – app skeleton, created with deterministic tools only
 set -euo pipefail
 
+# Newest installed .NET 11 SDK (dotnet --list-sdks is sorted ascending)
+SDK_VERSION=$(dotnet --list-sdks | awk '/^11\./ { v = $1 } END { print v }')
+[ -n "$SDK_VERSION" ] || { echo "No .NET 11 SDK installed (see dotnet --list-sdks)" >&2; exit 1; }
+echo "Using .NET SDK $SDK_VERSION"
+
 mkdir grader && cd grader
 git init -b main
 
-# .NET: pin SDK to .NET 11 RC (rolls forward to newer RCs/GA), solution, projects
-dotnet new globaljson --sdk-version 11.0.100-rc.1.26425.128 --roll-forward latestFeature
+# .NET: pin SDK to the installed .NET 11 SDK (rolls forward to newer RCs/GA), solution, projects
+dotnet new globaljson --sdk-version "$SDK_VERSION" --roll-forward latestFeature
 dotnet new gitignore
 dotnet new sln -n Grader
 

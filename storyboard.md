@@ -62,11 +62,16 @@ Script (run in the folder that should contain `grader/`):
 # Step 1 – app skeleton, created with deterministic tools only
 set -euo pipefail
 
+# Newest installed .NET 11 SDK (dotnet --list-sdks is sorted ascending)
+SDK_VERSION=$(dotnet --list-sdks | awk '/^11\./ { v = $1 } END { print v }')
+[ -n "$SDK_VERSION" ] || { echo "No .NET 11 SDK installed (see dotnet --list-sdks)" >&2; exit 1; }
+echo "Using .NET SDK $SDK_VERSION"
+
 mkdir grader && cd grader
 git init -b main
 
-# .NET: pin SDK to .NET 11 RC (rolls forward to newer RCs/GA), solution, projects
-dotnet new globaljson --sdk-version 11.0.100-rc.1.26425.128 --roll-forward latestFeature
+# .NET: pin SDK to the installed .NET 11 SDK (rolls forward to newer RCs/GA), solution, projects
+dotnet new globaljson --sdk-version "$SDK_VERSION" --roll-forward latestFeature
 dotnet new gitignore
 dotnet new sln -n Grader
 
@@ -120,6 +125,7 @@ Learnings:
   * Faster, cheaper, reproducible, always the current template versions
 * Use the agent to *generate calls* of deterministic tools if necessary (e.g. "write a script that creates …"), then review/run the script
 * Carefully review the script. Examples for gotchas found while preparing the script:
+  * A hard-coded prerelease SDK version in `global.json` breaks on machines with a different RC build → the script pins the newest installed .NET 11 SDK (`dotnet --list-sdks`); `latestFeature` rolls forward to newer RCs/GA
   * `dotnet new xunit` still defaults to xUnit **v2** → `--xunit-version v3`
   * v3 template configures MTP in `global.json` (`"test": { "runner": "Microsoft.Testing.Platform" }`)
   * Packages that follow the .NET release train (`ApiDescription.Server`, `Mvc.Testing`) need `--prerelease` while .NET 11 is in RC
